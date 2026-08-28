@@ -2,7 +2,7 @@
 
 Plataforma para centralizar la gestión administrativa del Colegio
 Iberoamericano (nivel preparatoria), diseñada desde el inicio para
-poder extenderse a otras escuelas.
+poder replicarse a otras escuelas.
 
 ## Problema
 
@@ -27,24 +27,26 @@ Tres módulos base:
 
 ## Perfiles de usuario (MVP)
 
-- **Super admin** — administra las escuelas dentro de la plataforma.
+- **Super admin** — administra la configuración y usuarios de esta instancia.
 - **Administrativo / Dirección** — gestión general y reportes.
 - **Caja / Finanzas** — pagos y cobranza.
 - *(Docente queda para una v2)*
 
 ## Diseño pensado a futuro
 
-Aunque el MVP se valida con el Colegio Iberoamericano, el modelo de
-datos está diseñado para multi-escuela desde el día uno (ver
-[`docs/arquitectura.md`](docs/arquitectura.md)), de forma que agregar
-una nueva institución no requiera rediseñar el sistema, y cada escuela
-pueda tener su propia configuración de marca (colores, logo) y sus
-particularidades.
+Cada escuela corre su propia instancia dedicada (su propio proyecto de
+Supabase y su propio deploy) — ver
+[`docs/arquitectura.md`](docs/arquitectura.md). No hay una base de
+datos compartida entre escuelas: agregar una institución nueva es
+replicar este proyecto, no una migración de esquema. Cada escuela
+tiene su propia configuración de marca (colores, logo) en su propia
+instancia.
 
 ## Ruta del proyecto
 
-MVP funcional en Iberoamericano → ajustes con uso real → extensión a
-otras escuelas → generalización para ofrecerlo externamente.
+MVP funcional en Iberoamericano → ajustes con uso real → replicar la
+instancia para otras escuelas → empaquetar el proceso de replicación
+para ofrecerlo externamente.
 
 ## Estructura del repo
 
@@ -56,10 +58,9 @@ database/      Esquema de base de datos (Supabase / Postgres)
 ## Stack
 
 - **Backend / base de datos**: Supabase (Postgres, autenticación, RLS
-  para separar datos por escuela y por perfil)
+  por rol dentro de la instancia)
 - **Frontend**: Next.js / React
 
 ## Estado actual
 
-🚧 En planeación — definiendo estructura de datos y bocetos de
-interfaz antes de iniciar la programación de los módulos.
+🚧 En desarrollo — layout base y scaffolding de Next.js en progreso.

@@ -5,35 +5,41 @@ Repo: https://github.com/GibeMireles/colegioiberoamericano
 ## Qué es esto
 
 Plataforma de gestión escolar para el Colegio Iberoamericano
-(preparatoria), pensada desde el inicio para poder extenderse a otras
+(preparatoria), pensada desde el inicio para poder replicarse a otras
 escuelas del mismo dueño (2 más actualmente) y eventualmente a
 terceros. Reemplaza un sistema actual basado en múltiples archivos de
 Excel.
 
 Lee primero `README.md` y `docs/arquitectura.md` en el repo — ahí está
-el planteamiento completo y el modelo de datos multi-escuela. No los
-repito aquí para evitar que queden desincronizados.
+el planteamiento completo y el modelo de instancia dedicada por
+escuela. No los repito aquí para evitar que queden desincronizados.
 
 ## Stack
 
 - **Backend / DB**: Supabase (Postgres + Auth + RLS)
 - **Frontend**: Next.js / React
-- El esquema inicial ya existe en `database/schema.sql` — created uses
-  `escuela_id` en cada tabla para separar datos por institución desde
-  el día uno.
+- El esquema inicial ya existe en `database/schema.sql`. Cada escuela
+  corre su propia instancia (su propio proyecto Supabase): no hay
+  `escuela_id` compartido, la identidad de marca vive en una tabla
+  `configuracion` de una sola fila por instancia.
 
 ## Estado actual
 
 - Planteamiento del producto: cerrado.
+- Modelo de datos: instancia dedicada por escuela (no multi-tenant
+  compartido) — ver `docs/arquitectura.md`.
 - Esquema de base de datos: primera versión escrita, sin correr aún
   en un proyecto real de Supabase.
 - Identidad visual: colores institucionales de Ibero son rojo
   (`#D85A30` aprox.) y amarillo/dorado (`#EF9F27` aprox.), tomados de
-  su sitio/logo actual. Estos deben vivir como configuración por
-  escuela (columnas `color_primario` / `color_secundario` en la tabla
-  `escuelas`), no hardcodeados en el frontend — para que otras
-  escuelas puedan tener los suyos sin tocar código.
-- Aún no hay frontend ni proyecto de Supabase creado.
+  su sitio/logo actual. Viven como configuración (`color_primario` /
+  `color_secundario` en la tabla `configuracion`), no hardcodeados en
+  el frontend — para que una réplica en otra escuela solo cambie esa
+  fila, sin tocar código.
+- Repo de Next.js scaffoldeado (App Router, TypeScript, Tailwind).
+  Layout base (navegación + tema de marca) en construcción — ver
+  `docs/superpowers/plans/2026-08-28-single-tenant-base-layout.md`.
+- Proyecto de Supabase real: aún no creado.
 
 ## Alcance del MVP — 3 módulos
 
@@ -43,7 +49,7 @@ repito aquí para evitar que queden desincronizados.
 
 ## Perfiles de usuario del MVP
 
-- Super admin (administra escuelas dentro de la plataforma)
+- Super admin (administra la configuración y usuarios de esta instancia)
 - Administrativo / Dirección
 - Caja / Finanzas
 
@@ -54,13 +60,13 @@ repito aquí para evitar que queden desincronizados.
 Vamos avanzando de forma iterativa: validar estructura → mostrar
 avance → ajustar → agregar la siguiente pieza. No sobre-construir de
 golpe. Priorizar que el MVP funcione bien en Iberoamericano antes de
-generalizar para otras escuelas.
+replicar a otras escuelas.
 
-## Primeros pasos sugeridos para esta sesión
+## Próximos pasos pendientes
 
-1. Crear el proyecto de Supabase y correr `database/schema.sql`.
-2. Configurar RLS básico por `escuela_id` y por rol (`perfiles.rol`).
-3. Scaffolding del proyecto Next.js con conexión a Supabase.
-4. Layout base con navegación lateral y tema dinámico por escuela
-   (leyendo `color_primario` / `color_secundario` de la tabla
-   `escuelas`), sobre el cual se irán montando los 3 módulos.
+1. Terminar el layout base (ver plan referenciado arriba).
+2. Crear el proyecto de Supabase real y correr `database/schema.sql`.
+3. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
+   la tabla `configuracion`.
+4. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
+   `escuela_id`, porque no aplica en una instancia dedicada.
