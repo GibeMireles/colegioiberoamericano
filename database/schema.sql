@@ -1,21 +1,23 @@
 -- Esquema inicial MVP — plataforma de gestión escolar
--- Diseñado para multi-escuela desde el día uno (columna escuela_id).
+-- Cada escuela corre su propia instancia (proyecto de Supabase propio).
+-- No hay aislamiento multi-tenant por escuela_id: una escuela nueva se
+-- atiende replicando este proyecto completo, no agregando una fila.
 -- Row Level Security (RLS) se define en un archivo aparte una vez
 -- que los roles de usuario estén definidos en Supabase Auth.
 
 create extension if not exists "pgcrypto";
 
 -- ==========================================================
--- Escuelas y configuración de marca
+-- Configuración de marca de esta instancia (fila única)
 -- ==========================================================
-create table escuelas (
+create table configuracion (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   nombre_corto text,
   color_primario text,      -- ej. '#D85A30'
   color_secundario text,    -- ej. '#EF9F27'
   logo_url text,
-  creado_en timestamptz not null default now()
+  actualizado_en timestamptz not null default now()
 );
 
 -- ==========================================================
@@ -23,7 +25,6 @@ create table escuelas (
 -- ==========================================================
 create table ciclos_escolares (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   nombre text not null,          -- ej. '2026-2027'
   fecha_inicio date,
   fecha_fin date,
@@ -32,14 +33,12 @@ create table ciclos_escolares (
 
 create table grados (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   nombre text not null,          -- ej. '1° preparatoria'
   orden int
 );
 
 create table grupos (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   grado_id uuid not null references grados(id),
   ciclo_escolar_id uuid not null references ciclos_escolares(id),
   nombre text not null            -- ej. '1°A'
@@ -50,7 +49,6 @@ create table grupos (
 -- ==========================================================
 create table alumnos (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   nombre_completo text not null,
   fecha_nacimiento date,
   matricula text,
@@ -63,7 +61,6 @@ create table alumnos (
 
 create table inscripciones (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   alumno_id uuid not null references alumnos(id),
   grupo_id uuid not null references grupos(id),
   ciclo_escolar_id uuid not null references ciclos_escolares(id),
@@ -75,14 +72,12 @@ create table inscripciones (
 -- ==========================================================
 create table conceptos_pago (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   nombre text not null,          -- ej. 'Colegiatura', 'Inscripción'
   monto_default numeric(10,2)
 );
 
 create table cargos (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   alumno_id uuid not null references alumnos(id),
   concepto_pago_id uuid not null references conceptos_pago(id),
   ciclo_escolar_id uuid not null references ciclos_escolares(id),
@@ -93,7 +88,6 @@ create table cargos (
 
 create table pagos (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   cargo_id uuid not null references cargos(id),
   monto_pagado numeric(10,2) not null,
   fecha_pago timestamptz not null default now(),
@@ -106,7 +100,6 @@ create table pagos (
 -- ==========================================================
 create table asistencias (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   alumno_id uuid not null references alumnos(id),
   grupo_id uuid not null references grupos(id),
   fecha date not null,
@@ -116,11 +109,10 @@ create table asistencias (
 );
 
 -- ==========================================================
--- Usuarios y perfiles (roles dentro de una escuela)
+-- Usuarios y perfiles (roles dentro de esta instancia)
 -- ==========================================================
 create table perfiles (
   id uuid primary key default gen_random_uuid(),
-  escuela_id uuid not null references escuelas(id),
   usuario_auth_id uuid not null,  -- referencia a auth.users de Supabase
   nombre_completo text not null,
   rol text not null,              -- super_admin | direccion | caja
@@ -128,7 +120,6 @@ create table perfiles (
 );
 
 -- Índices básicos para las consultas más comunes
-create index idx_alumnos_escuela on alumnos(escuela_id);
 create index idx_inscripciones_alumno on inscripciones(alumno_id);
 create index idx_cargos_alumno on cargos(alumno_id);
 create index idx_asistencias_grupo_fecha on asistencias(grupo_id, fecha);
