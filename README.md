@@ -53,7 +53,11 @@ para ofrecerlo externamente.
 ```
 docs/          Documentación de producto y arquitectura
 database/      Esquema de base de datos (Supabase / Postgres)
+src/           App Next.js (App Router)
 ```
+
+(No hay carpeta `public/`: los SVG del starter template de Next.js se
+eliminaron.)
 
 ## Stack
 
@@ -63,4 +67,6 @@ database/      Esquema de base de datos (Supabase / Postgres)
 
 ## Estado actual
 
-🚧 En desarrollo — layout base y scaffolding de Next.js en progreso.
+🚧 En desarrollo — layout base terminado (navegación + tema de marca);
+módulos del MVP (Alumnos y grados, Pagos, Listas/Asistencia) son
+placeholders. Falta conectar Supabase real.

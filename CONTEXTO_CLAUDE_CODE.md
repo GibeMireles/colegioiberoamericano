@@ -37,8 +37,10 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   el frontend — para que una réplica en otra escuela solo cambie esa
   fila, sin tocar código.
 - Repo de Next.js scaffoldeado (App Router, TypeScript, Tailwind).
-  Layout base (navegación + tema de marca) en construcción — ver
-  `docs/superpowers/plans/2026-08-28-single-tenant-base-layout.md`.
+  Layout base (navegación + tema de marca) terminado — ver
+  `docs/superpowers/plans/2026-08-28-single-tenant-base-layout.md`. Los
+  3 módulos del MVP son placeholders (`/alumnos`, `/pagos`,
+  `/asistencia`).
 - Proyecto de Supabase real: aún no creado.
 
 ## Alcance del MVP — 3 módulos
@@ -64,9 +66,8 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Terminar el layout base (ver plan referenciado arriba).
-2. Crear el proyecto de Supabase real y correr `database/schema.sql`.
-3. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
+1. Crear el proyecto de Supabase real y correr `database/schema.sql`.
+2. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
    la tabla `configuracion`.
-4. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
+3. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
    `escuela_id`, porque no aplica en una instancia dedicada.

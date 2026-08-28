@@ -22,7 +22,7 @@ export function Sidebar() {
             aria-current={active ? "page" : undefined}
             className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
               active
-                ? "bg-primario text-white"
+                ? "bg-primario-activo text-white"
                 : "text-zinc-700 hover:bg-zinc-100"
             }`}
           >

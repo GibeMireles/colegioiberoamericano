@@ -13,9 +13,9 @@ create extension if not exists "pgcrypto";
 create table configuracion (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
-  nombre_corto text,
-  color_primario text,      -- ej. '#D85A30'
-  color_secundario text,    -- ej. '#EF9F27'
+  nombre_corto text not null,
+  color_primario text not null,      -- ej. '#D85A30'
+  color_secundario text not null,    -- ej. '#EF9F27'
   logo_url text,
   actualizado_en timestamptz not null default now()
 );

@@ -5,6 +5,7 @@
   --foreground: #171717;
   --color-primario: #d85a30;
   --color-secundario: #ef9f27;
+  --color-primario-activo: #a8461f;
 }
 
 @theme inline {
@@ -12,6 +13,7 @@
   --color-foreground: var(--foreground);
   --color-primario: var(--color-primario);
   --color-secundario: var(--color-secundario);
+  --color-primario-activo: var(--color-primario-activo);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -19,5 +21,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
