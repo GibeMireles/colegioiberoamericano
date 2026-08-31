@@ -30,12 +30,13 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   compartido) — ver `docs/arquitectura.md`.
 - Esquema de base de datos: primera versión escrita, sin correr aún
   en un proyecto real de Supabase.
-- Identidad visual: colores institucionales de Ibero son rojo
-  (`#D85A30` aprox.) y amarillo/dorado (`#EF9F27` aprox.), tomados de
-  su sitio/logo actual. Viven como configuración (`color_primario` /
+- Identidad visual: colores institucionales de Ibero extraídos del
+  logo real (`assets/logo ibero.jpg`) — rojo `#E3312D` y amarillo/dorado
+  `#FEDC01`. Viven como configuración (`color_primario` /
   `color_secundario` en la tabla `configuracion`), no hardcodeados en
   el frontend — para que una réplica en otra escuela solo cambie esa
-  fila, sin tocar código.
+  fila, sin tocar código. El logo se sirve desde `public/logo-ibero.jpg`
+  por ahora (mock); en producción vendrá de `logo_url` en Supabase Storage.
 - Repo de Next.js scaffoldeado (App Router, TypeScript, Tailwind).
   Layout base (navegación + tema de marca) terminado — ver
   `docs/superpowers/plans/2026-08-28-single-tenant-base-layout.md`. Los

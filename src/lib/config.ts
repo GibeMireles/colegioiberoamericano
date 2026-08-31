@@ -10,8 +10,8 @@ export async function getConfiguracion(): Promise<ConfiguracionEscuela> {
   return {
     nombre: "Colegio Iberoamericano",
     nombreCorto: "Ibero",
-    colorPrimario: "#D85A30",
-    colorSecundario: "#EF9F27",
-    logoUrl: null,
+    colorPrimario: "#E3312D",
+    colorSecundario: "#FEDC01",
+    logoUrl: "/logo-ibero.jpg",
   };
 }

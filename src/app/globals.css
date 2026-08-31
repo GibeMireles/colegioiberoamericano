@@ -3,9 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --color-primario: #d85a30;
-  --color-secundario: #ef9f27;
-  --color-primario-activo: #a8461f;
+  --color-primario: #e3312d;
+  --color-secundario: #fedc01;
+  --color-primario-activo: #c02926;
 }
 
 @theme inline {
