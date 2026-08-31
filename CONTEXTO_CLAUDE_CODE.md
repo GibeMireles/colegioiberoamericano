@@ -35,11 +35,12 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   implementación del módulo Alumnos.
 - Identidad visual: colores institucionales de Ibero extraídos del
   logo real (`assets/logo ibero.jpg`) — rojo `#E3312D` y amarillo/dorado
-  `#FEDC01`. Viven como configuración (`color_primario` /
-  `color_secundario` en la tabla `configuracion`), no hardcodeados en
-  el frontend — para que una réplica en otra escuela solo cambie esa
-  fila, sin tocar código. El logo se sirve desde `public/logo-ibero.jpg`
-  por ahora (mock); en producción vendrá de `logo_url` en Supabase Storage.
+  `#FEDC01`. Viven en una fila real de la tabla `configuracion` en
+  Supabase (ya sembrada), no hardcodeados en el frontend — para que una
+  réplica en otra escuela solo cambie esa fila, sin tocar código.
+  `src/lib/config.ts` ya consulta esa tabla real (`getConfiguracion()`
+  dejó de ser un mock). El logo se sirve desde `public/logo-ibero.jpg`
+  por ahora; en producción vendrá de `logo_url` en Supabase Storage.
 - Repo de Next.js scaffoldeado (App Router, TypeScript, Tailwind).
   Layout base (navegación + tema de marca) terminado — ver
   `docs/superpowers/plans/2026-08-28-single-tenant-base-layout.md`. Los
@@ -100,10 +101,7 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
-   la tabla `configuracion` (esa tabla quedó vacía — nunca se sembró
-   una fila real de marca, solo `ciclos_escolares`/`grados`/`grupos`).
-2. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
+1. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
    `escuela_id`, porque no aplica en una instancia dedicada. Nota: hoy
    las 11 tablas tienen RLS deshabilitado (confirmado por
    `get_advisors`), expuestas por completo a la anon key — esperado
@@ -115,7 +113,7 @@ replicar a otras escuelas.
    embebida `alumnos` nunca es `null` — si RLS llega a ocultar una
    fila, esto truena al renderizar en vez de degradarse con
    gracia.
-3. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
+2. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
    cuando el piloto de Alumnos quede validado con el usuario real.
    Antes de escribir esos planes, decidir un punto de patrón: las
    Server Actions de escritura de Alumnos (`actualizarAlumno`,
