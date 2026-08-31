@@ -1,3 +1,5 @@
+import { createClient } from "@/lib/supabase/server";
+
 export interface ConfiguracionEscuela {
   nombre: string;
   nombreCorto: string;
@@ -7,11 +9,24 @@ export interface ConfiguracionEscuela {
 }
 
 export async function getConfiguracion(): Promise<ConfiguracionEscuela> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("configuracion")
+    .select("nombre, nombre_corto, color_primario, color_secundario, logo_url")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `No se pudo cargar la configuración de la escuela: ${error?.message}`
+    );
+  }
+
   return {
-    nombre: "Colegio Iberoamericano",
-    nombreCorto: "Ibero",
-    colorPrimario: "#E3312D",
-    colorSecundario: "#FEDC01",
-    logoUrl: "/logo-ibero.jpg",
+    nombre: data.nombre,
+    nombreCorto: data.nombre_corto,
+    colorPrimario: data.color_primario,
+    colorSecundario: data.color_secundario,
+    logoUrl: data.logo_url,
   };
 }
