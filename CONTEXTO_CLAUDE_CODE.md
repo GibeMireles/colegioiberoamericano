@@ -43,11 +43,23 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   3 módulos del MVP son placeholders (`/alumnos`, `/pagos`,
   `/asistencia`).
 - Proyecto de Supabase real: creado por el usuario ("Plataforma
-  Educativa", cuenta separada de sus otros clientes) y conectado al
-  repo de GitHub. El servidor MCP de Supabase quedó registrado en
-  `.mcp.json` (scope de proyecto) apuntando a ese proyecto, pero aún
-  falta que la sesión de Claude Code se reinicie para autenticarlo —
-  hasta entonces no hay acceso real a la base desde aquí.
+  Educativa", cuenta separada de sus otros clientes; `project_ref =
+  elhgncefzpttarpaxbzm`) y conectado al repo de GitHub. El servidor
+  MCP quedó registrado en `.mcp.json` (scope de proyecto), pero ese
+  archivo solo se lee si Claude Code arranca con esta carpeta como
+  working directory — como las sesiones normalmente arrancan en
+  `C:\Users\gilberto.mireles`, el servidor nunca cargaba, sin importar
+  cuántas veces se reiniciara la sesión.
+  Solución aplicada: se registró un servidor MCP equivalente a nivel
+  de **usuario** (`claude mcp add --transport http supabase-ibero
+  "https://mcp.supabase.com/mcp?project_ref=elhgncefzpttarpaxbzm&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
+  --scope user`), para que esté disponible sin depender del directorio
+  de trabajo. Ya se autenticó (`claude mcp login supabase-ibero` →
+  `✔ Connected`) contra la cuenta separada correcta.
+  **Pendiente:** las herramientas de este servidor (`mcp__supabase-ibero__*`)
+  no se cargan en una sesión ya iniciada — hace falta un reinicio más
+  de la sesión de Claude Code para que aparezcan y se pueda confirmar
+  acceso real a las tablas.
 - Módulo Alumnos y grados: spec del piloto escrita — ver
   `docs/superpowers/specs/2026-08-31-alumnos-piloto-1ro-prepa-design.md`.
   Alcance: alta/edición/baja lógica de alumnos, fijo a "1° de
@@ -78,9 +90,10 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Reiniciar la sesión de Claude Code para que el MCP de Supabase
-   (recién agregado en `.mcp.json`) termine de autenticarse contra el
-   proyecto real.
+1. Reiniciar la sesión de Claude Code (otra vez) para que las
+   herramientas del servidor `supabase-ibero`, ya autenticado a nivel
+   de usuario, queden disponibles. Verificar con `list_tables` que
+   apunta al proyecto correcto (`project_ref = elhgncefzpttarpaxbzm`).
 2. Correr `database/schema.sql` en ese proyecto y sembrar una fila en
    `ciclos_escolares`, `grados` y `grupos` para 1° de Preparatoria
    (ver la spec del piloto de alumnos).
