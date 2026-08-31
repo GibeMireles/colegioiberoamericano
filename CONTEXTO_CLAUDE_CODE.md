@@ -42,7 +42,18 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   `docs/superpowers/plans/2026-08-28-single-tenant-base-layout.md`. Los
   3 módulos del MVP son placeholders (`/alumnos`, `/pagos`,
   `/asistencia`).
-- Proyecto de Supabase real: aún no creado.
+- Proyecto de Supabase real: creado por el usuario ("Plataforma
+  Educativa", cuenta separada de sus otros clientes) y conectado al
+  repo de GitHub. El servidor MCP de Supabase quedó registrado en
+  `.mcp.json` (scope de proyecto) apuntando a ese proyecto, pero aún
+  falta que la sesión de Claude Code se reinicie para autenticarlo —
+  hasta entonces no hay acceso real a la base desde aquí.
+- Módulo Alumnos y grados: spec del piloto escrita — ver
+  `docs/superpowers/specs/2026-08-31-alumnos-piloto-1ro-prepa-design.md`.
+  Alcance: alta/edición/baja lógica de alumnos, fijo a "1° de
+  Preparatoria, Grupo A" (único salón real hoy), sin login todavía.
+  Aún no tiene plan de implementación ni código — bloqueado en que el
+  proyecto de Supabase quede accesible (ver punto anterior).
 
 ## Alcance del MVP — 3 módulos
 
@@ -67,8 +78,21 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Crear el proyecto de Supabase real y correr `database/schema.sql`.
-2. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
+1. Reiniciar la sesión de Claude Code para que el MCP de Supabase
+   (recién agregado en `.mcp.json`) termine de autenticarse contra el
+   proyecto real.
+2. Correr `database/schema.sql` en ese proyecto y sembrar una fila en
+   `ciclos_escolares`, `grados` y `grupos` para 1° de Preparatoria
+   (ver la spec del piloto de alumnos).
+3. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
    la tabla `configuracion`.
-3. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
+4. Escribir el plan de implementación del módulo Alumnos (spec ya
+   aprobada) e implementarlo.
+5. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
    `escuela_id`, porque no aplica en una instancia dedicada.
+
+## Cómo retomar esta sesión
+
+Usa el comando `/ibero` en cualquier sesión de Claude Code — lee este
+archivo, los últimos commits, y el estado de specs/planes pendientes
+automáticamente, sin necesidad de pegar enlaces o contexto a mano.
