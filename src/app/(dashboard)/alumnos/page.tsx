@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { obtenerGrupoPilotoInfo } from "@/lib/grupos/piloto";
 import { alternarActivoAlumno } from "./actions";
 
 const GRUPO_PILOTO_ID = process.env.GRUPO_PILOTO_ID!;
@@ -32,14 +33,22 @@ async function obtenerAlumnosDelGrupo(): Promise<AlumnoListado[]> {
 }
 
 export default async function AlumnosPage() {
-  const alumnos = await obtenerAlumnosDelGrupo();
+  const [alumnos, grupoInfo] = await Promise.all([
+    obtenerAlumnosDelGrupo(),
+    obtenerGrupoPilotoInfo(),
+  ]);
 
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-zinc-900">
-          Alumnos y grados
-        </h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900">
+            Alumnos y grados
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            {grupoInfo.grado} · Grupo {grupoInfo.grupo}
+          </p>
+        </div>
         <Link
           href="/alumnos/nuevo"
           className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"

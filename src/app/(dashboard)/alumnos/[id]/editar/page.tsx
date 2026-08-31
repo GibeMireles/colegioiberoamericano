@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AlumnoForm, type AlumnoFormValues } from "@/components/alumnos/AlumnoForm";
 import { createClient } from "@/lib/supabase/server";
+import { obtenerGrupoPilotoInfo } from "@/lib/grupos/piloto";
 import { actualizarAlumno } from "../../actions";
 
 export default async function EditarAlumnoPage({
@@ -10,6 +11,7 @@ export default async function EditarAlumnoPage({
 }) {
   const { id } = await params;
   const supabase = createClient();
+  const grupoInfo = await obtenerGrupoPilotoInfo();
 
   const { data: alumno, error } = await supabase
     .from("alumnos")
@@ -35,6 +37,9 @@ export default async function EditarAlumnoPage({
   return (
     <div>
       <h1 className="text-2xl font-semibold text-zinc-900">Editar alumno</h1>
+      <p className="mt-1 text-sm text-zinc-600">
+        {grupoInfo.grado} · Grupo {grupoInfo.grupo}
+      </p>
       <div className="mt-6">
         <AlumnoForm
           action={actualizarAlumno.bind(null, id)}
