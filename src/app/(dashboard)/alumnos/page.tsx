@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { alternarActivoAlumno } from "./actions";
 
 const GRUPO_PILOTO_ID = process.env.GRUPO_PILOTO_ID!;
+const CICLO_PILOTO_ID = process.env.CICLO_PILOTO_ID!;
+
+export const dynamic = "force-dynamic";
 
 interface AlumnoListado {
   id: string;
@@ -18,7 +21,8 @@ async function obtenerAlumnosDelGrupo(): Promise<AlumnoListado[]> {
   const { data, error } = await supabase
     .from("inscripciones")
     .select("alumnos(id, nombre_completo, matricula, tutor_nombre, activo)")
-    .eq("grupo_id", GRUPO_PILOTO_ID);
+    .eq("grupo_id", GRUPO_PILOTO_ID)
+    .eq("ciclo_escolar_id", CICLO_PILOTO_ID);
 
   if (error) {
     throw new Error(`No se pudo cargar la lista de alumnos: ${error.message}`);

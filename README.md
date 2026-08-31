@@ -68,5 +68,16 @@ eliminaron.)
 ## Estado actual
 
 🚧 En desarrollo — layout base terminado (navegación + tema de marca);
-módulos del MVP (Alumnos y grados, Pagos, Listas/Asistencia) son
-placeholders. Falta conectar Supabase real.
+Supabase real conectado y con el esquema migrado. El módulo **Alumnos
+y grados** está implementado (alta, edición, listado, baja/reactivación
+lógica). Pagos y Listas/Asistencia siguen siendo placeholders.
+
+### Variables de entorno
+
+Para correr el proyecto en un clon nuevo se necesitan estas variables
+(ver plantilla en `.env.example`):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GRUPO_PILOTO_ID`
+- `CICLO_PILOTO_ID`

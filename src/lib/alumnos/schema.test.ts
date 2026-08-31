@@ -22,11 +22,11 @@ describe("alumnoSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.fecha_nacimiento).toBeUndefined();
-      expect(result.data.matricula).toBeUndefined();
-      expect(result.data.tutor_nombre).toBeUndefined();
-      expect(result.data.tutor_telefono).toBeUndefined();
-      expect(result.data.tutor_email).toBeUndefined();
+      expect(result.data.fecha_nacimiento).toBeNull();
+      expect(result.data.matricula).toBeNull();
+      expect(result.data.tutor_nombre).toBeNull();
+      expect(result.data.tutor_telefono).toBeNull();
+      expect(result.data.tutor_email).toBeNull();
     }
   });
 
@@ -42,7 +42,7 @@ describe("alumnoSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("treats an empty optional field as undefined", () => {
+  it("treats an empty optional field as null so Supabase clears it", () => {
     const result = alumnoSchema.safeParse({
       nombre_completo: "Ana Torres",
       matricula: "",
@@ -50,7 +50,7 @@ describe("alumnoSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.matricula).toBeUndefined();
+      expect(result.data.matricula).toBeNull();
     }
   });
 

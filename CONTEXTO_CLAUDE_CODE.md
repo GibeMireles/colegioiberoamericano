@@ -69,12 +69,13 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   el proyecto real de Supabase — alumno creado, inscrito en el grupo
   piloto, editado y dado de baja/reactivado correctamente; validación
   de correo del tutor probada tanto en cliente como en servidor).
-  El trabajo vive en un git worktree, rama `worktree-alumnos-piloto-1ro-prepa`
-  (`.claude/worktrees/alumnos-piloto-1ro-prepa`), **todavía no
-  mergeada a `main` ni pusheada** — pendiente de decidir cómo integrarla
-  (ver `superpowers:finishing-a-development-branch`). La revisión final
-  de todo el branch (whole-branch code review) tampoco se corrió aún —
-  se pausó por límite de sesión, ver nota en la próxima sección.
+  El trabajo ya está **mergeado a `main` y pusheado** (el worktree
+  `worktree-alumnos-piloto-1ro-prepa` se eliminó). La revisión final de
+  todo el branch (whole-branch code review) sí se corrió, y encontró
+  problemas reales: un bug que impedía limpiar campos opcionales al
+  editar, falta de filtro por ciclo escolar en el listado, cacheo
+  estático en build de datos de alumnos, y ausencia de error boundary.
+  Todos se corrigieron en el commit de seguimiento correspondiente.
 
 ## Alcance del MVP — 3 módulos
 
@@ -99,26 +100,32 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Decidir cómo integrar la rama `worktree-alumnos-piloto-1ro-prepa`
-   (mergear a `main`, abrir PR, etc.) — usar
-   `superpowers:finishing-a-development-branch`.
-2. Correr la revisión final de todo el branch (whole-branch code
-   review) antes de mergear — se pausó por límite de sesión (98% del
-   presupuesto de 5 horas alcanzado a mitad de la ejecución del plan);
-   las 7 tareas de código sí pasaron su revisión individual limpia
-   (una con 1 ronda de fix por un error de tipos de TypeScript en una
-   query anidada de Supabase, documentado en la bitácora del plan).
-2. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
+1. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
    la tabla `configuracion` (esa tabla quedó vacía — nunca se sembró
    una fila real de marca, solo `ciclos_escolares`/`grados`/`grupos`).
-4. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
+2. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
    `escuela_id`, porque no aplica en una instancia dedicada. Nota: hoy
    las 11 tablas tienen RLS deshabilitado (confirmado por
    `get_advisors`), expuestas por completo a la anon key — esperado
    mientras no hay Auth, pero es lo primero que hay que cerrar antes de
-   exponer esto fuera de la red del colegio.
-5. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
+   exponer esto fuera de la red del colegio. Habilitar RLS obliga
+   además a revisar `obtenerAlumnosDelGrupo` en
+   `src/app/(dashboard)/alumnos/page.tsx`, porque su
+   `.flatMap((inscripcion) => inscripcion.alumnos)` asume que la fila
+   embebida `alumnos` nunca es `null` — si RLS llega a ocultar una
+   fila, esto truena al renderizar en vez de degradarse con
+   gracia.
+3. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
    cuando el piloto de Alumnos quede validado con el usuario real.
+   Antes de escribir esos planes, decidir un punto de patrón: las
+   Server Actions de escritura de Alumnos (`actualizarAlumno`,
+   `alternarActivoAlumno`) no acotan sus escrituras a través de
+   `inscripciones`/`grupo_id` como sí lo hace la consulta de lectura
+   del listado — inofensivo hoy (un solo grupo, sin Auth), pero los
+   próximos dos módulos copiarán el patrón que este fije, así que hay
+   que decidir si las escrituras también deberían resolver su
+   objetivo a través de la relación grupo/inscripción antes de
+   redactar esos planes.
 
 ## Cómo retomar esta sesión
 
