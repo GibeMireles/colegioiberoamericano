@@ -17,10 +17,13 @@ interface GradoConConteo {
 
 export default async function GradoCardsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ nivelId: string }>;
+  searchParams: Promise<{ ver?: string }>;
 }) {
   const { nivelId } = await params;
+  const { ver } = await searchParams;
   const supabase = createClient();
 
   const { data: nivel, error: errorNivel } = await supabase
@@ -54,7 +57,7 @@ export default async function GradoCardsPage({
     })
   );
 
-  if (gradosConConteo.length === 1) {
+  if (gradosConConteo.length === 1 && ver !== "todos") {
     redirect(`/alumnos/grado/${gradosConConteo[0].id}`);
   }
 

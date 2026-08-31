@@ -81,7 +81,10 @@ export default async function ListadoAlumnosPage({
   return (
     <div>
       <p className="text-sm text-zinc-600">
-        <Link href={`/alumnos/grado/${contexto.gradoId}`} className="hover:underline">
+        <Link
+          href={`/alumnos/grado/${contexto.gradoId}?ver=todos`}
+          className="hover:underline"
+        >
           ← {contexto.gradoNombre}
         </Link>{" "}
         / <span className="font-medium text-zinc-900">Grupo {contexto.grupoNombre}</span>

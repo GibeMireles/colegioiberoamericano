@@ -17,10 +17,13 @@ interface GrupoConConteo {
 
 export default async function GrupoCardsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ gradoId: string }>;
+  searchParams: Promise<{ ver?: string }>;
 }) {
   const { gradoId } = await params;
+  const { ver } = await searchParams;
   const supabase = createClient();
 
   // Nested embeds (e.g. .select("nivel:niveles(nombre)")) are avoided
@@ -68,7 +71,7 @@ export default async function GrupoCardsPage({
     })
   );
 
-  if (gruposConConteo.length === 1) {
+  if (gruposConConteo.length === 1 && ver !== "todos") {
     redirect(`/alumnos/grupo/${gruposConConteo[0].id}`);
   }
 
@@ -81,7 +84,10 @@ export default async function GrupoCardsPage({
         /{" "}
         {nivel && (
           <>
-            <Link href={`/alumnos/nivel/${grado.nivel_id}`} className="hover:underline">
+            <Link
+              href={`/alumnos/nivel/${grado.nivel_id}?ver=todos`}
+              className="hover:underline"
+            >
               {nivel.nombre}
             </Link>{" "}
             /{" "}
