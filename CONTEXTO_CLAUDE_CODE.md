@@ -28,8 +28,11 @@ escuela. No los repito aquí para evitar que queden desincronizados.
 - Planteamiento del producto: cerrado.
 - Modelo de datos: instancia dedicada por escuela (no multi-tenant
   compartido) — ver `docs/arquitectura.md`.
-- Esquema de base de datos: primera versión escrita, sin correr aún
-  en un proyecto real de Supabase.
+- Esquema de base de datos: `database/schema.sql` corrido en el
+  proyecto real de Supabase (`elhgncefzpttarpaxbzm`). Sembrada una fila
+  en `ciclos_escolares` ('2026-2027'), `grados` ('1° Preparatoria') y
+  `grupos` ('1°A') para el piloto — ver IDs en el plan de
+  implementación del módulo Alumnos.
 - Identidad visual: colores institucionales de Ibero extraídos del
   logo real (`assets/logo ibero.jpg`) — rojo `#E3312D` y amarillo/dorado
   `#FEDC01`. Viven como configuración (`color_primario` /
@@ -55,17 +58,23 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   "https://mcp.supabase.com/mcp?project_ref=elhgncefzpttarpaxbzm&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
   --scope user`), para que esté disponible sin depender del directorio
   de trabajo. Ya se autenticó (`claude mcp login supabase-ibero` →
-  `✔ Connected`) contra la cuenta separada correcta.
-  **Pendiente:** las herramientas de este servidor (`mcp__supabase-ibero__*`)
-  no se cargan en una sesión ya iniciada — hace falta un reinicio más
-  de la sesión de Claude Code para que aparezcan y se pueda confirmar
-  acceso real a las tablas.
-- Módulo Alumnos y grados: spec del piloto escrita — ver
-  `docs/superpowers/specs/2026-08-31-alumnos-piloto-1ro-prepa-design.md`.
-  Alcance: alta/edición/baja lógica de alumnos, fijo a "1° de
-  Preparatoria, Grupo A" (único salón real hoy), sin login todavía.
-  Aún no tiene plan de implementación ni código — bloqueado en que el
-  proyecto de Supabase quede accesible (ver punto anterior).
+  `✔ Connected`) contra la cuenta separada correcta. **Resuelto:** tras
+  un reinicio de sesión las herramientas `mcp__supabase-ibero__*`
+  cargan correctamente y apuntan al proyecto correcto.
+- Módulo Alumnos y grados: spec y plan de implementación escritos —
+  ver `docs/superpowers/specs/2026-08-31-alumnos-piloto-1ro-prepa-design.md`
+  y `docs/superpowers/plans/2026-08-31-alumnos-piloto-1ro-prepa.md`.
+  **Implementado y verificado end-to-end** (alta, edición, listado,
+  baja/reactivación lógica, todo probado a mano en el navegador contra
+  el proyecto real de Supabase — alumno creado, inscrito en el grupo
+  piloto, editado y dado de baja/reactivado correctamente; validación
+  de correo del tutor probada tanto en cliente como en servidor).
+  El trabajo vive en un git worktree, rama `worktree-alumnos-piloto-1ro-prepa`
+  (`.claude/worktrees/alumnos-piloto-1ro-prepa`), **todavía no
+  mergeada a `main` ni pusheada** — pendiente de decidir cómo integrarla
+  (ver `superpowers:finishing-a-development-branch`). La revisión final
+  de todo el branch (whole-branch code review) tampoco se corrió aún —
+  se pausó por límite de sesión, ver nota en la próxima sección.
 
 ## Alcance del MVP — 3 módulos
 
@@ -90,19 +99,26 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Reiniciar la sesión de Claude Code (otra vez) para que las
-   herramientas del servidor `supabase-ibero`, ya autenticado a nivel
-   de usuario, queden disponibles. Verificar con `list_tables` que
-   apunta al proyecto correcto (`project_ref = elhgncefzpttarpaxbzm`).
-2. Correr `database/schema.sql` en ese proyecto y sembrar una fila en
-   `ciclos_escolares`, `grados` y `grupos` para 1° de Preparatoria
-   (ver la spec del piloto de alumnos).
-3. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
-   la tabla `configuracion`.
-4. Escribir el plan de implementación del módulo Alumnos (spec ya
-   aprobada) e implementarlo.
-5. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
-   `escuela_id`, porque no aplica en una instancia dedicada.
+1. Decidir cómo integrar la rama `worktree-alumnos-piloto-1ro-prepa`
+   (mergear a `main`, abrir PR, etc.) — usar
+   `superpowers:finishing-a-development-branch`.
+2. Correr la revisión final de todo el branch (whole-branch code
+   review) antes de mergear — se pausó por límite de sesión (98% del
+   presupuesto de 5 horas alcanzado a mitad de la ejecución del plan);
+   las 7 tareas de código sí pasaron su revisión individual limpia
+   (una con 1 ronda de fix por un error de tipos de TypeScript en una
+   query anidada de Supabase, documentado en la bitácora del plan).
+2. Reemplazar el mock de `src/lib/config.ts` por una consulta real a
+   la tabla `configuracion` (esa tabla quedó vacía — nunca se sembró
+   una fila real de marca, solo `ciclos_escolares`/`grados`/`grupos`).
+4. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
+   `escuela_id`, porque no aplica en una instancia dedicada. Nota: hoy
+   las 11 tablas tienen RLS deshabilitado (confirmado por
+   `get_advisors`), expuestas por completo a la anon key — esperado
+   mientras no hay Auth, pero es lo primero que hay que cerrar antes de
+   exponer esto fuera de la red del colegio.
+5. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
+   cuando el piloto de Alumnos quede validado con el usuario real.
 
 ## Cómo retomar esta sesión
 
