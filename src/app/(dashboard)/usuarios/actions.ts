@@ -19,8 +19,12 @@ export async function invitarDocente(formData: FormData) {
 
   const admin = createAdminClient();
 
-  const { data, error: errorInvitacion } =
-    await admin.auth.admin.inviteUserByEmail(correo);
+  const { data, error: errorInvitacion } = await admin.auth.admin.inviteUserByEmail(
+    correo,
+    {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    }
+  );
 
   if (errorInvitacion || !data.user) {
     throw new Error(
@@ -35,6 +39,7 @@ export async function invitarDocente(formData: FormData) {
   });
 
   if (errorPerfil) {
+    await admin.auth.admin.deleteUser(data.user.id);
     throw new Error(`No se pudo crear el perfil del maestro: ${errorPerfil.message}`);
   }
 
