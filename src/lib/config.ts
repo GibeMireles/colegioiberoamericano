@@ -9,7 +9,7 @@ export interface ConfiguracionEscuela {
 }
 
 export async function getConfiguracion(): Promise<ConfiguracionEscuela> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("configuracion")

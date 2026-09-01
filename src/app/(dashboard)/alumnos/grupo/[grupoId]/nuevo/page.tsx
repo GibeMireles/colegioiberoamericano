@@ -9,7 +9,7 @@ export default async function NuevoAlumnoPage({
   params: Promise<{ grupoId: string }>;
 }) {
   const { grupoId } = await params;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: grupo, error } = await supabase
     .from("grupos")

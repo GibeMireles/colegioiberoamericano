@@ -27,7 +27,7 @@ function manejarError(
 
 export async function crearNivel(formData: FormData) {
   const { nombre } = parseNombre(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: maxOrden } = await supabase
     .from("niveles")
@@ -47,7 +47,7 @@ export async function crearNivel(formData: FormData) {
 
 export async function renombrarNivel(id: string, formData: FormData) {
   const { nombre } = parseNombre(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("niveles").update({ nombre }).eq("id", id);
 
@@ -57,7 +57,7 @@ export async function renombrarNivel(id: string, formData: FormData) {
 }
 
 export async function eliminarNivel(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { count, error: errorConteo } = await supabase
     .from("grados")
@@ -83,7 +83,7 @@ export async function eliminarNivel(id: string) {
 
 export async function crearGrado(nivelId: string, formData: FormData) {
   const { nombre } = parseNombre(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: maxOrden } = await supabase
     .from("grados")
@@ -104,7 +104,7 @@ export async function crearGrado(nivelId: string, formData: FormData) {
 
 export async function renombrarGrado(id: string, nivelId: string, formData: FormData) {
   const { nombre } = parseNombre(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("grados").update({ nombre }).eq("id", id);
 
@@ -114,7 +114,7 @@ export async function renombrarGrado(id: string, nivelId: string, formData: Form
 }
 
 export async function eliminarGrado(id: string, nivelId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { count, error: errorConteo } = await supabase
     .from("grupos")
@@ -140,7 +140,7 @@ export async function eliminarGrado(id: string, nivelId: string) {
 
 export async function crearGrupo(gradoId: string, formData: FormData) {
   const { nombre } = parseNombre(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const cicloId = await obtenerCicloActivoId();
 
@@ -159,7 +159,7 @@ export async function crearGrupo(gradoId: string, formData: FormData) {
 
 export async function renombrarGrupo(id: string, gradoId: string, formData: FormData) {
   const { nombre } = parseNombre(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("grupos").update({ nombre }).eq("id", id);
 
@@ -169,7 +169,7 @@ export async function renombrarGrupo(id: string, gradoId: string, formData: Form
 }
 
 export async function eliminarGrupo(id: string, gradoId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { count, error: errorConteo } = await supabase
     .from("inscripciones")

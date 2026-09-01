@@ -25,7 +25,7 @@ export default async function GrupoCardsPage({
 }) {
   const { gradoId } = await params;
   const { ver } = await searchParams;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Nested embeds (e.g. .select("nivel:niveles(nombre)")) are avoided
   // project-wide — see Global Constraints. Two flat queries instead.

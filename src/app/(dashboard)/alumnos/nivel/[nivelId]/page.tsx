@@ -24,7 +24,7 @@ export default async function GradoCardsPage({
 }) {
   const { nivelId } = await params;
   const { ver } = await searchParams;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: nivel, error: errorNivel } = await supabase
     .from("niveles")

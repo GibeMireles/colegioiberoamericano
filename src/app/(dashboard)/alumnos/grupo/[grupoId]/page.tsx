@@ -45,7 +45,7 @@ interface ContextoGrupo {
 }
 
 async function obtenerContexto(grupoId: string): Promise<ContextoGrupo | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: grupo, error: errorGrupo } = await supabase
     .from("grupos")
@@ -75,7 +75,7 @@ async function obtenerContexto(grupoId: string): Promise<ContextoGrupo | null> {
 }
 
 async function obtenerAlumnosDelGrupo(grupoId: string): Promise<AlumnoListado[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("inscripciones")

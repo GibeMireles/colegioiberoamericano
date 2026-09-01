@@ -14,7 +14,7 @@ interface NivelConConteo {
 }
 
 async function obtenerNiveles(): Promise<NivelConConteo[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: niveles, error } = await supabase
     .from("niveles")

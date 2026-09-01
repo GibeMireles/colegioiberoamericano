@@ -21,7 +21,7 @@ function parseAlumnoFormData(formData: FormData) {
 
 export async function crearAlumno(grupoId: string, formData: FormData) {
   const datos = parseAlumnoFormData(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const cicloId = await obtenerCicloActivoId();
 
@@ -59,7 +59,7 @@ export async function actualizarAlumno(
   formData: FormData
 ) {
   const datos = parseAlumnoFormData(formData);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("alumnos").update(datos).eq("id", id);
 
@@ -76,7 +76,7 @@ export async function alternarActivoAlumno(
   grupoId: string,
   activo: boolean
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("alumnos")

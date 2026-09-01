@@ -9,7 +9,7 @@ export default async function EditarAlumnoPage({
   params: Promise<{ grupoId: string; id: string }>;
 }) {
   const { grupoId, id } = await params;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: alumno, error } = await supabase
     .from("alumnos")
