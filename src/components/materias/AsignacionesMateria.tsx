@@ -19,12 +19,14 @@ export function AsignacionesMateria({
   docentes,
   accionCrear,
   accionEliminar,
+  gradoId,
 }: {
   asignaciones: AsignacionListada[];
   grupos: OpcionSelect[];
   docentes: OpcionSelect[];
   accionCrear: (formData: FormData) => void | Promise<void>;
-  accionEliminar: (id: string) => void | Promise<void>;
+  accionEliminar: (id: string, gradoId: string) => void | Promise<void>;
+  gradoId: string;
 }) {
   const [asignando, setAsignando] = useState(false);
 
@@ -38,7 +40,7 @@ export function AsignacionesMateria({
           <span className="text-zinc-700">
             Grupo {asignacion.grupoNombre} — {asignacion.docenteNombre}
           </span>
-          <form action={accionEliminar.bind(null, asignacion.id)}>
+          <form action={accionEliminar.bind(null, asignacion.id, gradoId)}>
             <button type="submit" className="text-xs font-medium text-zinc-500 hover:underline">
               Quitar
             </button>

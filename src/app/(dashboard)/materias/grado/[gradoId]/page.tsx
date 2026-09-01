@@ -191,7 +191,8 @@ export default async function MateriasGradoPage({
               grupos={grupos}
               docentes={docentes}
               accionCrear={guardarAsignacion.bind(null, materia.id, gradoId)}
-              accionEliminar={(id) => eliminarAsignacion(id, gradoId)}
+              accionEliminar={eliminarAsignacion}
+              gradoId={gradoId}
             />
             <Link
               href={`/materias/${materia.id}/lista`}
