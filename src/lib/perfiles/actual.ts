@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Rol } from "@/lib/roles";
 
 export interface PerfilActual {
   id: string;
   usuario_auth_id: string;
   nombre_completo: string;
-  rol: string;
+  rol: Rol;
 }
 
 export async function obtenerPerfilActual(): Promise<PerfilActual | null> {

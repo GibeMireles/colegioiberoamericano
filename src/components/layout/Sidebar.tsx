@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isNavItemActive, navItemsVisibles } from "@/lib/nav";
+import type { Rol } from "@/lib/roles";
 
-export function Sidebar({ rol }: { rol: string | null }) {
+export function Sidebar({ rol }: { rol: Rol | null }) {
   const pathname = usePathname();
   const items = navItemsVisibles(rol);
 

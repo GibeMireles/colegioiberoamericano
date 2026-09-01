@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import { isNavItemActive, NAV_ITEMS, navItemsVisibles } from "./nav";
 
 describe("NAV_ITEMS", () => {
-  it("has the 4 modules in order, Usuarios solo para super_admin", () => {
+  it("has the 5 modules in order, con Materias y Usuarios restringidos", () => {
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
       "/alumnos",
       "/pagos",
       "/asistencia",
+      "/materias",
       "/usuarios",
+    ]);
+    expect(NAV_ITEMS.find((item) => item.href === "/materias")?.rolesPermitidos).toEqual([
+      "super_admin",
+      "direccion",
     ]);
     expect(NAV_ITEMS.find((item) => item.href === "/usuarios")?.rolesPermitidos).toEqual([
       "super_admin",
@@ -39,13 +44,21 @@ describe("navItemsVisibles", () => {
     expect(hrefs).toEqual(["/alumnos", "/pagos", "/asistencia"]);
   });
 
-  it("excludes a restricted item when rol does not match", () => {
+  it("excludes materias and usuarios for docente", () => {
     const hrefs = navItemsVisibles("docente").map((item) => item.href);
+    expect(hrefs).not.toContain("/materias");
     expect(hrefs).not.toContain("/usuarios");
   });
 
-  it("includes a restricted item when rol matches", () => {
+  it("includes materias but not usuarios for direccion", () => {
+    const hrefs = navItemsVisibles("direccion").map((item) => item.href);
+    expect(hrefs).toContain("/materias");
+    expect(hrefs).not.toContain("/usuarios");
+  });
+
+  it("includes materias and usuarios for super_admin", () => {
     const hrefs = navItemsVisibles("super_admin").map((item) => item.href);
+    expect(hrefs).toContain("/materias");
     expect(hrefs).toContain("/usuarios");
   });
 });
