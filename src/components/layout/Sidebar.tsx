@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS, isNavItemActive } from "@/lib/nav";
+import { isNavItemActive, navItemsVisibles } from "@/lib/nav";
 
-export function Sidebar() {
+export function Sidebar({ rol }: { rol: string | null }) {
   const pathname = usePathname();
+  const items = navItemsVisibles(rol);
 
   return (
     <nav
       className="flex w-56 shrink-0 flex-col gap-1 border-r border-black/10 bg-white p-4"
       aria-label="Navegación principal"
     >
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isNavItemActive(pathname, item.href);
 
         return (

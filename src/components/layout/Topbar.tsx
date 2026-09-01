@@ -1,7 +1,9 @@
 import Image from "next/image";
 import { getConfiguracion } from "@/lib/config";
+import { cerrarSesion } from "@/lib/auth/actions";
+import type { PerfilActual } from "@/lib/perfiles/actual";
 
-export async function Topbar() {
+export async function Topbar({ perfil }: { perfil: PerfilActual | null }) {
   const config = await getConfiguracion();
 
   return (
@@ -25,6 +27,17 @@ export async function Topbar() {
       <span className="text-lg font-semibold text-zinc-900">
         {config.nombre}
       </span>
+
+      {perfil && (
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-zinc-600">{perfil.nombre_completo}</span>
+          <form action={cerrarSesion}>
+            <button type="submit" className="text-sm text-zinc-600 hover:underline">
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
+      )}
     </header>
   );
 }
