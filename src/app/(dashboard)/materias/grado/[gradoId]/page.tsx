@@ -3,7 +3,19 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TarjetaAgregar } from "@/components/alumnos/TarjetaAgregar";
 import { FilaMateria } from "@/components/materias/FilaMateria";
-import { crearMateria, renombrarMateria, eliminarMateria } from "../../actions";
+import {
+  AsignacionesMateria,
+  type AsignacionListada,
+  type OpcionSelect,
+} from "@/components/materias/AsignacionesMateria";
+import { obtenerDocentes } from "@/lib/perfiles/docentes";
+import {
+  crearMateria,
+  renombrarMateria,
+  eliminarMateria,
+  guardarAsignacion,
+  eliminarAsignacion,
+} from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +28,7 @@ interface ContextoGrado {
 interface MateriaListado {
   id: string;
   nombre: string;
-  cantidadAsignaciones: number;
+  asignaciones: AsignacionListada[];
 }
 
 async function obtenerContexto(gradoId: string): Promise<ContextoGrado | null> {
@@ -49,6 +61,41 @@ async function obtenerContexto(gradoId: string): Promise<ContextoGrado | null> {
   };
 }
 
+async function obtenerAsignacionesDeMateria(materiaId: string): Promise<AsignacionListada[]> {
+  const supabase = await createClient();
+
+  const { data: asignaciones, error } = await supabase
+    .from("asignaciones")
+    .select("id, grupo_id, docente_perfil_id")
+    .eq("materia_id", materiaId);
+
+  if (error) {
+    throw new Error(`No se pudieron cargar las asignaciones: ${error.message}`);
+  }
+
+  return Promise.all(
+    (asignaciones ?? []).map(async (asignacion) => {
+      const { data: grupo } = await supabase
+        .from("grupos")
+        .select("nombre")
+        .eq("id", asignacion.grupo_id)
+        .single();
+
+      const { data: docente } = await supabase
+        .from("perfiles")
+        .select("nombre_completo")
+        .eq("id", asignacion.docente_perfil_id)
+        .single();
+
+      return {
+        id: asignacion.id,
+        grupoNombre: grupo?.nombre ?? "?",
+        docenteNombre: docente?.nombre_completo ?? "?",
+      };
+    })
+  );
+}
+
 async function obtenerMaterias(gradoId: string): Promise<MateriaListado[]> {
   const supabase = await createClient();
 
@@ -63,15 +110,28 @@ async function obtenerMaterias(gradoId: string): Promise<MateriaListado[]> {
   }
 
   return Promise.all(
-    (data ?? []).map(async (materia) => {
-      const { count } = await supabase
-        .from("asignaciones")
-        .select("id", { count: "exact", head: true })
-        .eq("materia_id", materia.id);
-
-      return { id: materia.id, nombre: materia.nombre, cantidadAsignaciones: count ?? 0 };
-    })
+    (data ?? []).map(async (materia) => ({
+      id: materia.id,
+      nombre: materia.nombre,
+      asignaciones: await obtenerAsignacionesDeMateria(materia.id),
+    }))
   );
+}
+
+async function obtenerGruposDelGrado(gradoId: string): Promise<OpcionSelect[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("grupos")
+    .select("id, nombre")
+    .eq("grado_id", gradoId)
+    .order("nombre");
+
+  if (error) {
+    throw new Error(`No se pudieron cargar los grupos: ${error.message}`);
+  }
+
+  return (data ?? []).map((grupo) => ({ id: grupo.id, etiqueta: `Grupo ${grupo.nombre}` }));
 }
 
 export default async function MateriasGradoPage({
@@ -86,7 +146,16 @@ export default async function MateriasGradoPage({
     notFound();
   }
 
-  const materias = await obtenerMaterias(gradoId);
+  const [materias, grupos, docentesListado] = await Promise.all([
+    obtenerMaterias(gradoId),
+    obtenerGruposDelGrado(gradoId),
+    obtenerDocentes(),
+  ]);
+
+  const docentes: OpcionSelect[] = docentesListado.map((docente) => ({
+    id: docente.id,
+    etiqueta: docente.nombre_completo,
+  }));
 
   return (
     <div>
@@ -113,10 +182,24 @@ export default async function MateriasGradoPage({
           <FilaMateria
             key={materia.id}
             nombre={materia.nombre}
-            cantidadAsignaciones={materia.cantidadAsignaciones}
+            cantidadAsignaciones={materia.asignaciones.length}
             accionRenombrar={renombrarMateria.bind(null, materia.id, gradoId)}
             accionEliminar={eliminarMateria.bind(null, materia.id, gradoId)}
-          />
+          >
+            <AsignacionesMateria
+              asignaciones={materia.asignaciones}
+              grupos={grupos}
+              docentes={docentes}
+              accionCrear={guardarAsignacion.bind(null, materia.id, gradoId)}
+              accionEliminar={(id) => eliminarAsignacion(id, gradoId)}
+            />
+            <Link
+              href={`/materias/${materia.id}/lista`}
+              className="mt-2 inline-block text-xs font-medium text-primario hover:underline"
+            >
+              Lista propia
+            </Link>
+          </FilaMateria>
         ))}
       </div>
 

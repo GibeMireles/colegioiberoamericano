@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { nombreEstructuraSchema } from "@/lib/estructura/schema";
 import { requerirRol } from "@/lib/perfiles/requerirRol";
+import { asignacionSchema } from "@/lib/asignaciones/schema";
+import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 
 function manejarError(
   error: { code?: string; message: string } | null,
@@ -74,6 +76,51 @@ export async function eliminarMateria(id: string, gradoId: string) {
   const { error } = await supabase.from("materias").delete().eq("id", id);
   if (error) {
     throw new Error(`No se pudo eliminar la materia: ${error.message}`);
+  }
+
+  revalidatePath(`/materias/grado/${gradoId}`);
+}
+
+export async function guardarAsignacion(
+  materiaId: string,
+  gradoId: string,
+  formData: FormData
+) {
+  await requerirRol(["super_admin", "direccion"]);
+  const { grupo_id, docente_perfil_id } = asignacionSchema.parse({
+    grupo_id: formData.get("grupo_id") ?? undefined,
+    docente_perfil_id: formData.get("docente_perfil_id") ?? undefined,
+  });
+  const supabase = await createClient();
+
+  const cicloId = await obtenerCicloActivoId();
+  if (!cicloId) {
+    throw new Error("No se pudo asignar: no hay un ciclo escolar activo.");
+  }
+
+  const { error } = await supabase.from("asignaciones").insert({
+    materia_id: materiaId,
+    grupo_id,
+    docente_perfil_id,
+    ciclo_escolar_id: cicloId,
+  });
+
+  manejarError(
+    error,
+    "Ya hay un maestro asignado a esta materia en este grupo y ciclo.",
+    "No se pudo asignar el maestro"
+  );
+
+  revalidatePath(`/materias/grado/${gradoId}`);
+}
+
+export async function eliminarAsignacion(id: string, gradoId: string) {
+  await requerirRol(["super_admin", "direccion"]);
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("asignaciones").delete().eq("id", id);
+  if (error) {
+    throw new Error(`No se pudo quitar la asignación: ${error.message}`);
   }
 
   revalidatePath(`/materias/grado/${gradoId}`);
