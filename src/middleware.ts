@@ -54,6 +54,9 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+// Corre en todas las rutas para refrescar la sesión en segundo plano; la redirección solo aplica a RUTAS_PROTEGIDAS.
 export const config = {
-  matcher: ["/usuarios/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };
