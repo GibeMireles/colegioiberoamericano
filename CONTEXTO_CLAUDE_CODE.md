@@ -97,6 +97,36 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   Preparatoria" ni su único grupo) y ya corregido: los enlaces "volver"
   agregan `?ver=todos`, que evita el salto automático solo al navegar
   hacia atrás, no al entrar por primera vez.
+- Los nombres de alumno se separan en `nombres` / `apellido_paterno` /
+  `apellido_materno` (apellido materno opcional) — formato oficial tipo
+  SEP, se ordenan y muestran como "Apellido paterno Apellido materno,
+  Nombres". Registro y edición piden los 3 campos por separado.
+- **Autenticación + rol Docente** — primera de 3 sub-piezas para poder
+  capturar calificaciones (las otras dos: Materias/asignación, y la
+  captura en sí, calcada del Excel real que la escuela usa cada
+  semestre — ver
+  `docs/superpowers/specs/2026-09-01-autenticacion-docente-design.md`
+  y `docs/superpowers/plans/2026-09-01-autenticacion-docente.md`).
+  Login real con enlace mágico (sin contraseña, sin registro público);
+  alta de maestros exclusivamente por el Super admin desde `/usuarios`
+  (botón "Invitar maestro" → `supabase.auth.admin.inviteUserByEmail` +
+  fila en `perfiles` con `rol = 'docente'`, todo en una sola Server
+  Action que es la única parte del código que usa la `service role
+  key`). RLS activado **solo** en `perfiles` (las demás tablas siguen
+  como estaban — sigue pendiente, ver abajo). Alumnos/Pagos/Asistencia
+  siguen sin login, sin cambios — el middleware solo protege
+  `/usuarios` (y protegerá las rutas de Calificaciones cuando se
+  construyan). **Implementado y verificado end-to-end** con el primer
+  login real.
+  Bug real encontrado en el primer login (y corregido antes de dar por
+  buena la pieza): la política RLS "super_admin lee todos los
+  perfiles" consultaba `perfiles` dentro de su propio `using()`, lo
+  que en Postgres/Supabase causa "infinite recursion detected in
+  policy for relation perfiles" — una política sobre una tabla no
+  puede auto-referenciar esa misma tabla sin pasar por una función
+  `security definer` (que sí evita volver a disparar RLS). Se corrigió
+  con `public.es_super_admin()`; si en el futuro se agregan más
+  políticas de "rol X puede ver todo", usar el mismo patrón.
 
 ## Alcance del MVP — 3 módulos
 
@@ -109,8 +139,8 @@ escuela. No los repito aquí para evitar que queden desincronizados.
 - Super admin (administra la configuración y usuarios de esta instancia)
 - Administrativo / Dirección
 - Caja / Finanzas
-
-(Docente queda para una v2, no construir aún.)
+- Docente (login propio, ver arriba — por ahora solo puede entrar; sin
+  pantallas propias todavía, esas llegan con Materias/Calificaciones)
 
 ## Enfoque de trabajo
 
@@ -121,19 +151,25 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. Configurar RLS básico por rol (`perfiles.rol`) — ya no por
-   `escuela_id`, porque no aplica en una instancia dedicada. Nota: hoy
-   las 11 tablas tienen RLS deshabilitado (confirmado por
-   `get_advisors`), expuestas por completo a la anon key — esperado
-   mientras no hay Auth, pero es lo primero que hay que cerrar antes de
-   exponer esto fuera de la red del colegio. Habilitar RLS obliga
-   además a revisar `obtenerAlumnosDelGrupo` en
+1. **Calificaciones, pieza 2: Materias + asignación docente-materia-grupo**
+   — siguiente en la fila (ver el desglose de 3 piezas arriba). Pieza 3
+   es la captura en sí, calcada del Excel real.
+2. Configurar RLS por rol en el resto de las tablas (`perfiles.rol`) —
+   hoy solo `perfiles` tiene RLS; las otras 11 tablas siguen sin RLS
+   (confirmado por `get_advisors`), expuestas por completo a la anon
+   key — esperado mientras Alumnos/Pagos/Asistencia no piden login
+   (decisión explícita de la pieza de Auth), pero es lo primero que hay
+   que cerrar antes de exponer esto fuera de la red del colegio.
+   Habilitar RLS obliga además a revisar `obtenerAlumnosDelGrupo` en
    `src/app/(dashboard)/alumnos/grupo/[grupoId]/page.tsx`, porque su
    `.flatMap((inscripcion) => inscripcion.alumnos)` asume que la fila
    embebida `alumnos` nunca es `null` — si RLS llega a ocultar una
    fila, esto truena al renderizar en vez de degradarse con
-   gracia.
-2. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
+   gracia. Al escribir cualquier política nueva de "rol X ve todo",
+   usar el patrón `security definer` de `public.es_super_admin()` (ver
+   arriba) — una política no puede consultar su propia tabla
+   directamente sin causar recursión infinita.
+3. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
    cuando el módulo de Alumnos quede validado con más uso real. El
    punto de patrón que estaba pendiente de decidir ya quedó resuelto:
    las Server Actions de escritura reciben el id del padre relevante

@@ -131,7 +131,7 @@ create table perfiles (
   id uuid primary key default gen_random_uuid(),
   usuario_auth_id uuid not null,  -- referencia a auth.users de Supabase
   nombre_completo text not null,
-  rol text not null,              -- super_admin | direccion | caja
+  rol text not null,              -- super_admin | direccion | caja | docente
   creado_en timestamptz not null default now()
 );
 
@@ -139,3 +139,36 @@ create table perfiles (
 create index idx_inscripciones_alumno on inscripciones(alumno_id);
 create index idx_cargos_alumno on cargos(alumno_id);
 create index idx_asistencias_grupo_fecha on asistencias(grupo_id, fecha);
+
+-- ==========================================================
+-- Autenticación + rol Docente
+-- ==========================================================
+alter table perfiles
+  add constraint perfiles_rol_check
+  check (rol in ('super_admin', 'direccion', 'caja', 'docente'));
+
+alter table perfiles enable row level security;
+
+create policy "cada usuario lee su propio perfil"
+  on perfiles for select
+  using (usuario_auth_id = auth.uid());
+
+-- security definer: evita "infinite recursion detected in policy for
+-- relation perfiles" que causa una política que consulta su propia tabla
+-- directamente en el using().
+create or replace function public.es_super_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from perfiles
+    where usuario_auth_id = auth.uid() and rol = 'super_admin'
+  );
+$$;
+
+create policy "super_admin lee todos los perfiles"
+  on perfiles for select
+  using (public.es_super_admin());
