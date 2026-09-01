@@ -10,8 +10,8 @@ export interface TarjetaEditableProps {
   color: string;
   cantidadHijos: number;
   etiquetaHijos: string;
-  accionRenombrar: (formData: FormData) => void;
-  accionEliminar: () => void;
+  accionRenombrar: (formData: FormData) => void | Promise<void>;
+  accionEliminar: () => void | Promise<void>;
 }
 
 export function TarjetaEditable({
@@ -86,7 +86,14 @@ export function TarjetaEditable({
             Eliminar
           </span>
         ) : (
-          <form action={accionEliminar}>
+          <form
+            action={accionEliminar}
+            onSubmit={(evento) => {
+              if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) {
+                evento.preventDefault();
+              }
+            }}
+          >
             <button
               type="submit"
               className="rounded-md bg-white/20 px-2 py-1 text-xs font-medium hover:bg-white/30"

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export interface TarjetaAgregarProps {
   etiqueta: string;
-  accionCrear: (formData: FormData) => void;
+  accionCrear: (formData: FormData) => void | Promise<void>;
 }
 
 export function TarjetaAgregar({ etiqueta, accionCrear }: TarjetaAgregarProps) {

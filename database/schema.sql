@@ -21,7 +21,7 @@ create table configuracion (
 );
 
 -- ==========================================================
--- Ciclos escolares, grados y grupos
+-- Ciclos escolares, niveles, grados y grupos
 -- ==========================================================
 create table ciclos_escolares (
   id uuid primary key default gen_random_uuid(),
@@ -31,9 +31,18 @@ create table ciclos_escolares (
   activo boolean not null default true
 );
 
+-- Niveles (Villa, Primaria, Secundaria, Preparatoria) — editables por el
+-- personal desde la UI de Alumnos, no una lista fija en código.
+create table niveles (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null unique,
+  orden int
+);
+
 create table grados (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,          -- ej. '1° preparatoria'
+  nivel_id uuid not null references niveles(id),
   orden int
 );
 
@@ -43,6 +52,10 @@ create table grupos (
   ciclo_escolar_id uuid not null references ciclos_escolares(id),
   nombre text not null            -- ej. '1°A'
 );
+
+-- Evita duplicados accidentales al crear desde la UI.
+create unique index idx_grados_nombre_por_nivel on grados(nivel_id, nombre);
+create unique index idx_grupos_nombre_por_grado on grupos(grado_id, ciclo_escolar_id, nombre);
 
 -- ==========================================================
 -- Alumnos e inscripciones

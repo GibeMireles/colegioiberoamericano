@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TarjetaEditable } from "@/components/alumnos/TarjetaEditable";
 import { TarjetaAgregar } from "@/components/alumnos/TarjetaAgregar";
 import { crearGrupo, renombrarGrupo, eliminarGrupo } from "../../estructura-actions";
+import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 
 export const dynamic = "force-dynamic";
 
@@ -44,16 +45,13 @@ export default async function GrupoCardsPage({
     .eq("id", grado.nivel_id)
     .single();
 
-  const { data: ciclo } = await supabase
-    .from("ciclos_escolares")
-    .select("id")
-    .eq("activo", true)
-    .single();
+  const cicloId = await obtenerCicloActivoId();
 
   const { data: grupos, error: errorGrupos } = await supabase
     .from("grupos")
     .select("id, nombre")
-    .eq("grado_id", gradoId);
+    .eq("grado_id", gradoId)
+    .order("nombre");
 
   if (errorGrupos) {
     throw new Error(`No se pudieron cargar los grupos: ${errorGrupos.message}`);
@@ -65,7 +63,7 @@ export default async function GrupoCardsPage({
         .from("inscripciones")
         .select("id", { count: "exact", head: true })
         .eq("grupo_id", grupo.id)
-        .eq("ciclo_escolar_id", ciclo?.id ?? "");
+        .eq("ciclo_escolar_id", cicloId ?? "");
 
       return { id: grupo.id, nombre: grupo.nombre, cantidadAlumnos: count ?? 0 };
     })

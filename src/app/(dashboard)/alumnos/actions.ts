@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { alumnoSchema } from "@/lib/alumnos/schema";
+import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 
 function parseAlumnoFormData(formData: FormData) {
   return alumnoSchema.parse({
@@ -20,13 +21,9 @@ export async function crearAlumno(grupoId: string, formData: FormData) {
   const datos = parseAlumnoFormData(formData);
   const supabase = createClient();
 
-  const { data: ciclo, error: errorCiclo } = await supabase
-    .from("ciclos_escolares")
-    .select("id")
-    .eq("activo", true)
-    .single();
+  const cicloId = await obtenerCicloActivoId();
 
-  if (errorCiclo || !ciclo) {
+  if (!cicloId) {
     throw new Error("No se pudo inscribir al alumno: no hay un ciclo escolar activo.");
   }
 
@@ -43,7 +40,7 @@ export async function crearAlumno(grupoId: string, formData: FormData) {
   const { error: errorInscripcion } = await supabase.from("inscripciones").insert({
     alumno_id: alumno.id,
     grupo_id: grupoId,
-    ciclo_escolar_id: ciclo.id,
+    ciclo_escolar_id: cicloId,
   });
 
   if (errorInscripcion) {

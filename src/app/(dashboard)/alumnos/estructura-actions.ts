@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { nombreEstructuraSchema } from "@/lib/estructura/schema";
+import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 
 function parseNombre(formData: FormData) {
   return nombreEstructuraSchema.parse({
@@ -31,7 +32,7 @@ export async function crearNivel(formData: FormData) {
   const { data: maxOrden } = await supabase
     .from("niveles")
     .select("orden")
-    .order("orden", { ascending: false })
+    .order("orden", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
 
@@ -88,7 +89,7 @@ export async function crearGrado(nivelId: string, formData: FormData) {
     .from("grados")
     .select("orden")
     .eq("nivel_id", nivelId)
-    .order("orden", { ascending: false })
+    .order("orden", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
 
@@ -141,19 +142,15 @@ export async function crearGrupo(gradoId: string, formData: FormData) {
   const { nombre } = parseNombre(formData);
   const supabase = createClient();
 
-  const { data: ciclo, error: errorCiclo } = await supabase
-    .from("ciclos_escolares")
-    .select("id")
-    .eq("activo", true)
-    .single();
+  const cicloId = await obtenerCicloActivoId();
 
-  if (errorCiclo || !ciclo) {
+  if (!cicloId) {
     throw new Error("No se pudo crear el grupo: no hay un ciclo escolar activo.");
   }
 
   const { error } = await supabase
     .from("grupos")
-    .insert({ nombre, grado_id: gradoId, ciclo_escolar_id: ciclo.id });
+    .insert({ nombre, grado_id: gradoId, ciclo_escolar_id: cicloId });
 
   manejarError(error, "Ya existe un grupo con ese nombre en este grado.", "No se pudo crear el grupo");
 
