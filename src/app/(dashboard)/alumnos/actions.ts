@@ -8,7 +8,9 @@ import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 
 function parseAlumnoFormData(formData: FormData) {
   return alumnoSchema.parse({
-    nombre_completo: formData.get("nombre_completo") ?? undefined,
+    nombres: formData.get("nombres") ?? undefined,
+    apellido_paterno: formData.get("apellido_paterno") ?? undefined,
+    apellido_materno: formData.get("apellido_materno") ?? undefined,
     fecha_nacimiento: formData.get("fecha_nacimiento") ?? undefined,
     matricula: formData.get("matricula") ?? undefined,
     tutor_nombre: formData.get("tutor_nombre") ?? undefined,

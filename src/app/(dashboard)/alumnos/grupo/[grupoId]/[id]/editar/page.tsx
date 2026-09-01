@@ -14,7 +14,7 @@ export default async function EditarAlumnoPage({
   const { data: alumno, error } = await supabase
     .from("alumnos")
     .select(
-      "nombre_completo, fecha_nacimiento, matricula, tutor_nombre, tutor_telefono, tutor_email"
+      "nombres, apellido_paterno, apellido_materno, fecha_nacimiento, matricula, tutor_nombre, tutor_telefono, tutor_email"
     )
     .eq("id", id)
     .single();
@@ -24,7 +24,9 @@ export default async function EditarAlumnoPage({
   }
 
   const valoresIniciales: AlumnoFormValues = {
-    nombre_completo: alumno.nombre_completo,
+    nombres: alumno.nombres,
+    apellido_paterno: alumno.apellido_paterno ?? "",
+    apellido_materno: alumno.apellido_materno ?? "",
     fecha_nacimiento: alumno.fecha_nacimiento ?? "",
     matricula: alumno.matricula ?? "",
     tutor_nombre: alumno.tutor_nombre ?? "",

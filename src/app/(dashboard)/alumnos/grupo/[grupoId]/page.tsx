@@ -7,10 +7,35 @@ export const dynamic = "force-dynamic";
 
 interface AlumnoListado {
   id: string;
-  nombre_completo: string;
+  nombres: string;
+  apellido_paterno: string | null;
+  apellido_materno: string | null;
   matricula: string | null;
   tutor_nombre: string | null;
   activo: boolean;
+}
+
+function formatearNombre(alumno: AlumnoListado): string {
+  const apellidos = [alumno.apellido_paterno, alumno.apellido_materno]
+    .filter((valor): valor is string => Boolean(valor))
+    .join(" ");
+
+  return apellidos ? `${apellidos}, ${alumno.nombres}` : alumno.nombres;
+}
+
+function compararAlumnos(a: AlumnoListado, b: AlumnoListado): number {
+  const aTieneApellido = a.apellido_paterno !== null;
+  const bTieneApellido = b.apellido_paterno !== null;
+
+  if (aTieneApellido !== bTieneApellido) {
+    return aTieneApellido ? -1 : 1;
+  }
+
+  return (
+    (a.apellido_paterno ?? "").localeCompare(b.apellido_paterno ?? "", "es") ||
+    (a.apellido_materno ?? "").localeCompare(b.apellido_materno ?? "", "es") ||
+    a.nombres.localeCompare(b.nombres, "es")
+  );
 }
 
 interface ContextoGrupo {
@@ -54,14 +79,18 @@ async function obtenerAlumnosDelGrupo(grupoId: string): Promise<AlumnoListado[]>
 
   const { data, error } = await supabase
     .from("inscripciones")
-    .select("alumnos(id, nombre_completo, matricula, tutor_nombre, activo)")
+    .select(
+      "alumnos(id, nombres, apellido_paterno, apellido_materno, matricula, tutor_nombre, activo)"
+    )
     .eq("grupo_id", grupoId);
 
   if (error) {
     throw new Error(`No se pudo cargar la lista de alumnos: ${error.message}`);
   }
 
-  return (data ?? []).flatMap((inscripcion) => inscripcion.alumnos);
+  return (data ?? [])
+    .flatMap((inscripcion) => inscripcion.alumnos)
+    .sort(compararAlumnos);
 }
 
 export default async function ListadoAlumnosPage({
@@ -117,7 +146,7 @@ export default async function ListadoAlumnosPage({
           <tbody>
             {alumnos.map((alumno) => (
               <tr key={alumno.id} className="border-b border-zinc-100">
-                <td className="py-2 text-zinc-900">{alumno.nombre_completo}</td>
+                <td className="py-2 text-zinc-900">{formatearNombre(alumno)}</td>
                 <td className="py-2 text-zinc-600">{alumno.matricula ?? "—"}</td>
                 <td className="py-2 text-zinc-600">{alumno.tutor_nombre ?? "—"}</td>
                 <td className="py-2 text-zinc-600">

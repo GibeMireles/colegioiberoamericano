@@ -7,7 +7,9 @@ const optionalText = z
   .transform((value) => (value && value.length > 0 ? value : null));
 
 export const alumnoSchema = z.object({
-  nombre_completo: z.string().trim().min(1, "El nombre completo es requerido"),
+  nombres: z.string().trim().min(1, "El nombre es requerido"),
+  apellido_paterno: z.string().trim().min(1, "El apellido paterno es requerido"),
+  apellido_materno: optionalText,
   fecha_nacimiento: optionalText,
   matricula: optionalText,
   tutor_nombre: optionalText,

@@ -62,7 +62,10 @@ create unique index idx_grupos_nombre_por_grado on grupos(grado_id, ciclo_escola
 -- ==========================================================
 create table alumnos (
   id uuid primary key default gen_random_uuid(),
-  nombre_completo text not null,
+  nombres text not null,
+  apellido_paterno text,       -- requerido a nivel de app (Zod), no en DB —
+  apellido_materno text,       -- para no bloquear alumnos ya capturados antes
+                                -- de este cambio, que aún no lo tienen.
   fecha_nacimiento date,
   matricula text,
   tutor_nombre text,

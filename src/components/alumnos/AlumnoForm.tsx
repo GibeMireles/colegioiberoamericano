@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import { alumnoSchema } from "@/lib/alumnos/schema";
 
 export interface AlumnoFormValues {
-  nombre_completo: string;
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
   fecha_nacimiento: string;
   matricula: string;
   tutor_nombre: string;
@@ -13,7 +15,9 @@ export interface AlumnoFormValues {
 }
 
 const VALORES_VACIOS: AlumnoFormValues = {
-  nombre_completo: "",
+  nombres: "",
+  apellido_paterno: "",
+  apellido_materno: "",
   fecha_nacimiento: "",
   matricula: "",
   tutor_nombre: "",
@@ -41,7 +45,9 @@ export function AlumnoForm({
   function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
     const formData = new FormData(evento.currentTarget);
     const resultado = alumnoSchema.safeParse({
-      nombre_completo: campo(formData, "nombre_completo"),
+      nombres: campo(formData, "nombres"),
+      apellido_paterno: campo(formData, "apellido_paterno"),
+      apellido_materno: campo(formData, "apellido_materno"),
       fecha_nacimiento: campo(formData, "fecha_nacimiento"),
       matricula: campo(formData, "matricula"),
       tutor_nombre: campo(formData, "tutor_nombre"),
@@ -66,21 +72,49 @@ export function AlumnoForm({
   return (
     <form action={action} onSubmit={manejarEnvio} noValidate className="max-w-lg space-y-4">
       <div>
-        <label
-          htmlFor="nombre_completo"
-          className="block text-sm font-medium text-zinc-700"
-        >
-          Nombre completo
+        <label htmlFor="nombres" className="block text-sm font-medium text-zinc-700">
+          Nombre(s)
         </label>
         <input
-          id="nombre_completo"
-          name="nombre_completo"
-          defaultValue={valoresIniciales.nombre_completo}
+          id="nombres"
+          name="nombres"
+          defaultValue={valoresIniciales.nombres}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
         />
-        {errores.nombre_completo && (
-          <p className="mt-1 text-sm text-red-600">{errores.nombre_completo}</p>
+        {errores.nombres && (
+          <p className="mt-1 text-sm text-red-600">{errores.nombres}</p>
         )}
+      </div>
+      <div>
+        <label
+          htmlFor="apellido_paterno"
+          className="block text-sm font-medium text-zinc-700"
+        >
+          Apellido paterno
+        </label>
+        <input
+          id="apellido_paterno"
+          name="apellido_paterno"
+          defaultValue={valoresIniciales.apellido_paterno}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
+        />
+        {errores.apellido_paterno && (
+          <p className="mt-1 text-sm text-red-600">{errores.apellido_paterno}</p>
+        )}
+      </div>
+      <div>
+        <label
+          htmlFor="apellido_materno"
+          className="block text-sm font-medium text-zinc-700"
+        >
+          Apellido materno
+        </label>
+        <input
+          id="apellido_materno"
+          name="apellido_materno"
+          defaultValue={valoresIniciales.apellido_materno}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
+        />
       </div>
       <div>
         <label
