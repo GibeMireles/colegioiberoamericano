@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { obtenerPerfilActual } from "@/lib/perfiles/actual";
 import { invitarMaestroSchema } from "@/lib/usuarios/schema";
+import { obtenerSiteUrl } from "@/lib/site-url";
 
 export async function invitarDocente(formData: FormData) {
   const perfilActual = await obtenerPerfilActual();
@@ -18,11 +19,12 @@ export async function invitarDocente(formData: FormData) {
   });
 
   const admin = createAdminClient();
+  const siteUrl = obtenerSiteUrl();
 
   const { data, error: errorInvitacion } = await admin.auth.admin.inviteUserByEmail(
     correo,
     {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     }
   );
 
@@ -39,7 +41,12 @@ export async function invitarDocente(formData: FormData) {
   });
 
   if (errorPerfil) {
-    await admin.auth.admin.deleteUser(data.user.id);
+    const { error: errorLimpieza } = await admin.auth.admin.deleteUser(data.user.id);
+    if (errorLimpieza) {
+      console.error(
+        `No se pudo limpiar el usuario de auth tras un error de perfil: ${errorLimpieza.message}`
+      );
+    }
     throw new Error(`No se pudo crear el perfil del maestro: ${errorPerfil.message}`);
   }
 

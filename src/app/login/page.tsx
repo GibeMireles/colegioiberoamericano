@@ -3,14 +3,15 @@ import { enviarEnlaceAcceso } from "./actions";
 const MENSAJES_ERROR: Record<string, string> = {
   correo_invalido: "Escribe un correo válido.",
   envio_fallido: "No se pudo enviar el enlace. Intenta de nuevo.",
+  enlace_invalido: "Tu enlace ya no es válido o expiró. Pide uno nuevo.",
 };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ enviado?: string; error?: string }>;
+  searchParams: Promise<{ enviado?: string; error?: string; next?: string }>;
 }) {
-  const { enviado, error } = await searchParams;
+  const { enviado, error, next } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50">
@@ -23,6 +24,7 @@ export default async function LoginPage({
           </p>
         ) : (
           <form action={enviarEnlaceAcceso} className="mt-4 space-y-4">
+            {next && <input type="hidden" name="next" value={next} />}
             <div>
               <label
                 htmlFor="correo"

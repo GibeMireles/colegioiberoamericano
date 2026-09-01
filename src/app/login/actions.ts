@@ -2,9 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { obtenerSiteUrl } from "@/lib/site-url";
 
 export async function enviarEnlaceAcceso(formData: FormData) {
   const correo = formData.get("correo");
+  const next = formData.get("next");
 
   if (typeof correo !== "string" || correo.trim().length === 0) {
     redirect("/login?error=correo_invalido");
@@ -12,10 +14,17 @@ export async function enviarEnlaceAcceso(formData: FormData) {
 
   const supabase = await createClient();
 
+  const siteUrl = obtenerSiteUrl();
+  const nextParam =
+    typeof next === "string" && next.trim().length > 0
+      ? `?next=${encodeURIComponent(next)}`
+      : "";
+
   const { error } = await supabase.auth.signInWithOtp({
     email: correo.trim(),
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      shouldCreateUser: false,
+      emailRedirectTo: `${siteUrl}/auth/callback${nextParam}`,
     },
   });
 

@@ -24,6 +24,8 @@ export async function createClient() {
             cookieStore.set(name, value, options)
           );
         } catch {
+          // Ocurre al llamarse desde un Server Component (no puede escribir
+          // cookies); el middleware se encarga de refrescar la sesión.
         }
       },
     },

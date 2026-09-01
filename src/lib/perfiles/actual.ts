@@ -25,7 +25,8 @@ export async function obtenerPerfilActual(): Promise<PerfilActual | null> {
     .maybeSingle();
 
   if (error) {
-    throw new Error(`No se pudo cargar el perfil actual: ${error.message}`);
+    console.error(`No se pudo cargar el perfil actual: ${error.message}`);
+    return null;
   }
 
   return data;

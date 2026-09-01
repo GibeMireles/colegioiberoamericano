@@ -172,3 +172,6 @@ $$;
 create policy "super_admin lee todos los perfiles"
   on perfiles for select
   using (public.es_super_admin());
+
+alter table perfiles
+  add constraint perfiles_usuario_auth_id_key unique (usuario_auth_id);
