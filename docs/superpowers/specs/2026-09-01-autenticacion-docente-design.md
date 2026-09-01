@@ -98,15 +98,31 @@ create policy "cada usuario lee su propio perfil"
   on perfiles for select
   using (usuario_auth_id = auth.uid());
 
+create or replace function public.es_super_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from perfiles
+    where usuario_auth_id = auth.uid() and rol = 'super_admin'
+  );
+$$;
+
 create policy "super_admin lee todos los perfiles"
   on perfiles for select
-  using (
-    exists (
-      select 1 from perfiles p
-      where p.usuario_auth_id = auth.uid() and p.rol = 'super_admin'
-    )
-  );
+  using (public.es_super_admin());
 ```
+
+La política de super_admin no puede consultar `perfiles` directamente en su
+`using` — eso dispara la misma política otra vez sobre cada fila que
+intenta leer ("infinite recursion detected in policy for relation
+perfiles"), un problema conocido de Postgres/Supabase con políticas
+auto-referenciales. Por eso la verificación vive en `es_super_admin()`, una
+función `security definer` (corre con privilegios del dueño, así que su
+consulta interna no vuelve a disparar RLS).
 
 No se agrega política de `insert`/`update`/`delete` sobre `perfiles`:
 la única escritura hoy es el alta de maestros, que corre con la

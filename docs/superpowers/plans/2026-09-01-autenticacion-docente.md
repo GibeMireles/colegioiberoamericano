@@ -36,15 +36,32 @@
      on perfiles for select
      using (usuario_auth_id = auth.uid());
 
+   create or replace function public.es_super_admin()
+   returns boolean
+   language sql
+   security definer
+   set search_path = public
+   stable
+   as $$
+     select exists (
+       select 1 from perfiles
+       where usuario_auth_id = auth.uid() and rol = 'super_admin'
+     );
+   $$;
+
    create policy "super_admin lee todos los perfiles"
      on perfiles for select
-     using (
-       exists (
-         select 1 from perfiles p
-         where p.usuario_auth_id = auth.uid() and p.rol = 'super_admin'
-       )
-     );
+     using (public.es_super_admin());
    ```
+
+   **Nota (corrección aplicada en ejecución):** la versión original de esta
+   política consultaba `perfiles` directamente en su propio `using`, lo cual
+   causa "infinite recursion detected in policy for relation perfiles" en
+   Postgres/Supabase (una política no puede auto-referenciar su tabla sin
+   pasar por una función `security definer`, que sí evita volver a disparar
+   RLS). Se detectó en vivo al primer login real y se corrigió con
+   `es_super_admin()` — el bloque de arriba ya refleja la versión corregida,
+   que es la que quedó aplicada en la base real.
 3. Pedir al usuario, por chat (no se hace de forma autónoma):
    - Pegar `SUPABASE_SERVICE_ROLE_KEY` en `.env.local` (el valor se obtiene del dashboard de Supabase → Project Settings → API — nunca se solicita ni se maneja por otro medio).
    - Agregar `NEXT_PUBLIC_SITE_URL=http://localhost:3000` a `.env.local` (se ajusta cuando haya URL de producción).
@@ -1143,15 +1160,26 @@ create policy "cada usuario lee su propio perfil"
   on perfiles for select
   using (usuario_auth_id = auth.uid());
 
+create or replace function public.es_super_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from perfiles
+    where usuario_auth_id = auth.uid() and rol = 'super_admin'
+  );
+$$;
+
 create policy "super_admin lee todos los perfiles"
   on perfiles for select
-  using (
-    exists (
-      select 1 from perfiles p
-      where p.usuario_auth_id = auth.uid() and p.rol = 'super_admin'
-    )
-  );
+  using (public.es_super_admin());
 ```
+
+(Esta es la versión corregida — ver la nota en Prerequisites sobre la
+recursión infinita de la versión original.)
 
 - [ ] **Step 3: Actualizar `CONTEXTO_CLAUDE_CODE.md`**
 
