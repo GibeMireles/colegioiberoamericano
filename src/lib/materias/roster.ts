@@ -42,3 +42,27 @@ export async function obtenerAlumnosDelGrupoDeMateria(
 
   return (inscripciones ?? []).flatMap((inscripcion) => inscripcion.alumnos);
 }
+
+export async function obtenerAlumnosDeMateria(
+  materiaId: string,
+  cicloId: string
+): Promise<AlumnoDeMateria[]> {
+  const supabase = await createClient();
+
+  // Embed sancionado (ver Global Constraints del plan): materia_alumnos -> alumnos.
+  const { data: listaPropia, error: errorLista } = await supabase
+    .from("materia_alumnos")
+    .select("alumnos(id, nombres, apellido_paterno, apellido_materno)")
+    .eq("materia_id", materiaId)
+    .eq("ciclo_escolar_id", cicloId);
+
+  if (errorLista) {
+    throw new Error(`No se pudo cargar la lista de la materia: ${errorLista.message}`);
+  }
+
+  if (listaPropia && listaPropia.length > 0) {
+    return listaPropia.flatMap((fila) => fila.alumnos);
+  }
+
+  return obtenerAlumnosDelGrupoDeMateria(materiaId, cicloId);
+}
