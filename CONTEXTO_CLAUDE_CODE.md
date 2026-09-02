@@ -127,6 +127,23 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   `security definer` (que sí evita volver a disparar RLS). Se corrigió
   con `public.es_super_admin()`; si en el futuro se agregan más
   políticas de "rol X puede ver todo", usar el mismo patrón.
+- **Calificaciones, pieza 2: Materias + asignación docente-materia-grupo**
+  — spec y plan de implementación escritos, **sin ejecutar todavía** —
+  ver `docs/superpowers/specs/2026-09-01-materias-asignacion-design.md`
+  y `docs/superpowers/plans/2026-09-01-materias-asignacion.md`. Define
+  3 tablas nuevas (`materias`, `asignaciones`, `materia_alumnos`): cada
+  materia pertenece a un grado específico (no se repite entre grados),
+  exactamente un maestro por materia+grupo+ciclo, y la lista de alumnos
+  de una materia por defecto es el grupo completo inscrito, con
+  posibilidad de que Dirección la sobreescriba a mano (caso de uso:
+  inglés con niveles, donde cada nivel es una materia distinta con su
+  propio subconjunto de alumnos del mismo grupo). Pantalla de
+  administración bajo `/materias`, visible solo a `super_admin` y
+  `direccion`, con la misma navegación por tarjetas Nivel → Grado que ya
+  existe en Alumnos pero de solo lectura. El plan también endurece
+  `PerfilActual.rol` de `string` suelto a la unión de los 4 valores
+  reales (`src/lib/roles.ts`), quedó pendiente de la pieza de Auth. Sin
+  RLS nuevo (mismo criterio que el resto del proyecto hoy).
 
 ## Alcance del MVP — 3 módulos
 
@@ -152,8 +169,10 @@ replicar a otras escuelas.
 ## Próximos pasos pendientes
 
 1. **Calificaciones, pieza 2: Materias + asignación docente-materia-grupo**
-   — siguiente en la fila (ver el desglose de 3 piezas arriba). Pieza 3
-   es la captura en sí, calcada del Excel real.
+   — spec y plan ya escritos (ver "Estado actual" arriba), **listo para
+   ejecutar**: 9 tasks TDD, incluye migración de 3 tablas nuevas y
+   commit final de documentación. Pieza 3 es la captura en sí, calcada
+   del Excel real.
 2. Configurar RLS por rol en el resto de las tablas (`perfiles.rol`) —
    hoy solo `perfiles` tiene RLS; las otras 11 tablas siguen sin RLS
    (confirmado por `get_advisors`), expuestas por completo a la anon
