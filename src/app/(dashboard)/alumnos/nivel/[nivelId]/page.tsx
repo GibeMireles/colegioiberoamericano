@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TarjetaEditable } from "@/components/alumnos/TarjetaEditable";
 import { TarjetaAgregar } from "@/components/alumnos/TarjetaAgregar";
 import { crearGrado, renombrarGrado, eliminarGrado } from "../../estructura-actions";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function GradoCardsPage({
   params: Promise<{ nivelId: string }>;
   searchParams: Promise<{ ver?: string }>;
 }) {
+  await requerirRolPagina(["super_admin", "direccion", "docente"]);
   const { nivelId } = await params;
   const { ver } = await searchParams;
   const supabase = await createClient();

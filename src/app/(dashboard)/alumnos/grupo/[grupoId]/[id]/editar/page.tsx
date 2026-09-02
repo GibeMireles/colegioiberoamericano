@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { AlumnoForm, type AlumnoFormValues } from "@/components/alumnos/AlumnoForm";
 import { createClient } from "@/lib/supabase/server";
 import { actualizarAlumno } from "../../../../actions";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 
 export default async function EditarAlumnoPage({
   params,
 }: {
   params: Promise<{ grupoId: string; id: string }>;
 }) {
+  await requerirRolPagina(["super_admin", "direccion"]);
   const { grupoId, id } = await params;
   const supabase = await createClient();
 

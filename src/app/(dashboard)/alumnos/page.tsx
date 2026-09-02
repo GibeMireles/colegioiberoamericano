@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TarjetaEditable } from "@/components/alumnos/TarjetaEditable";
 import { TarjetaAgregar } from "@/components/alumnos/TarjetaAgregar";
 import { crearNivel, renombrarNivel, eliminarNivel } from "./estructura-actions";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ async function obtenerNiveles(): Promise<NivelConConteo[]> {
 }
 
 export default async function AlumnosPage() {
+  await requerirRolPagina(["super_admin", "direccion", "docente"]);
   const niveles = await obtenerNiveles();
 
   return (

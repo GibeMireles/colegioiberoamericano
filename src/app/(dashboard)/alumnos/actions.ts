@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { alumnoSchema } from "@/lib/alumnos/schema";
 import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
+import { requerirRol } from "@/lib/perfiles/requerirRol";
 
 function parseAlumnoFormData(formData: FormData) {
   return alumnoSchema.parse({
@@ -20,6 +21,7 @@ function parseAlumnoFormData(formData: FormData) {
 }
 
 export async function crearAlumno(grupoId: string, formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const datos = parseAlumnoFormData(formData);
   const supabase = await createClient();
 
@@ -58,6 +60,7 @@ export async function actualizarAlumno(
   grupoId: string,
   formData: FormData
 ) {
+  await requerirRol(["super_admin", "direccion"]);
   const datos = parseAlumnoFormData(formData);
   const supabase = await createClient();
 
@@ -76,6 +79,7 @@ export async function alternarActivoAlumno(
   grupoId: string,
   activo: boolean
 ) {
+  await requerirRol(["super_admin", "direccion"]);
   const supabase = await createClient();
 
   const { error } = await supabase

@@ -5,6 +5,7 @@ import { TarjetaEditable } from "@/components/alumnos/TarjetaEditable";
 import { TarjetaAgregar } from "@/components/alumnos/TarjetaAgregar";
 import { crearGrupo, renombrarGrupo, eliminarGrupo } from "../../estructura-actions";
 import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function GrupoCardsPage({
   params: Promise<{ gradoId: string }>;
   searchParams: Promise<{ ver?: string }>;
 }) {
+  await requerirRolPagina(["super_admin", "direccion", "docente"]);
   const { gradoId } = await params;
   const { ver } = await searchParams;
   const supabase = await createClient();

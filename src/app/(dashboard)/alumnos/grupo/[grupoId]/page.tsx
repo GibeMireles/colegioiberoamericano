@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 import { alternarActivoAlumno } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ async function obtenerAlumnosDelGrupo(grupoId: string): Promise<AlumnoListado[]>
   }
 
   return (data ?? [])
-    .flatMap((inscripcion) => inscripcion.alumnos)
+    .flatMap((inscripcion) => inscripcion.alumnos ?? [])
     .sort(compararAlumnos);
 }
 
@@ -98,6 +99,9 @@ export default async function ListadoAlumnosPage({
 }: {
   params: Promise<{ grupoId: string }>;
 }) {
+  const perfil = await requerirRolPagina(["super_admin", "direccion", "docente"]);
+  const puedeEditar = perfil.rol !== "docente";
+
   const { grupoId } = await params;
   const contexto = await obtenerContexto(grupoId);
 
@@ -122,12 +126,14 @@ export default async function ListadoAlumnosPage({
         <h1 className="text-2xl font-semibold text-zinc-900">
           Alumnos — {contexto.gradoNombre}, Grupo {contexto.grupoNombre}
         </h1>
-        <Link
-          href={`/alumnos/grupo/${grupoId}/nuevo`}
-          className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Agregar alumno
-        </Link>
+        {puedeEditar && (
+          <Link
+            href={`/alumnos/grupo/${grupoId}/nuevo`}
+            className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            Agregar alumno
+          </Link>
+        )}
       </div>
 
       {alumnos.length === 0 ? (
@@ -140,7 +146,7 @@ export default async function ListadoAlumnosPage({
               <th className="py-2 font-medium">Matrícula</th>
               <th className="py-2 font-medium">Tutor</th>
               <th className="py-2 font-medium">Estatus</th>
-              <th className="py-2 font-medium">Acciones</th>
+              {puedeEditar && <th className="py-2 font-medium">Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -152,27 +158,29 @@ export default async function ListadoAlumnosPage({
                 <td className="py-2 text-zinc-600">
                   {alumno.activo ? "Activo" : "Inactivo"}
                 </td>
-                <td className="py-2">
-                  <Link
-                    href={`/alumnos/grupo/${grupoId}/${alumno.id}/editar`}
-                    className="text-primario hover:underline"
-                  >
-                    Editar
-                  </Link>
-                  <form
-                    action={alternarActivoAlumno.bind(
-                      null,
-                      alumno.id,
-                      grupoId,
-                      alumno.activo
-                    )}
-                    className="inline"
-                  >
-                    <button type="submit" className="ml-3 text-zinc-600 hover:underline">
-                      {alumno.activo ? "Dar de baja" : "Reactivar"}
-                    </button>
-                  </form>
-                </td>
+                {puedeEditar && (
+                  <td className="py-2">
+                    <Link
+                      href={`/alumnos/grupo/${grupoId}/${alumno.id}/editar`}
+                      className="text-primario hover:underline"
+                    >
+                      Editar
+                    </Link>
+                    <form
+                      action={alternarActivoAlumno.bind(
+                        null,
+                        alumno.id,
+                        grupoId,
+                        alumno.activo
+                      )}
+                      className="inline"
+                    >
+                      <button type="submit" className="ml-3 text-zinc-600 hover:underline">
+                        {alumno.activo ? "Dar de baja" : "Reactivar"}
+                      </button>
+                    </form>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

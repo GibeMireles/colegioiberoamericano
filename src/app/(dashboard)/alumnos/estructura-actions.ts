@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { nombreEstructuraSchema } from "@/lib/estructura/schema";
 import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
+import { requerirRol } from "@/lib/perfiles/requerirRol";
 
 function parseNombre(formData: FormData) {
   return nombreEstructuraSchema.parse({
@@ -26,6 +27,7 @@ function manejarError(
 // ---------- Niveles ----------
 
 export async function crearNivel(formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const { nombre } = parseNombre(formData);
   const supabase = await createClient();
 
@@ -46,6 +48,7 @@ export async function crearNivel(formData: FormData) {
 }
 
 export async function renombrarNivel(id: string, formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const { nombre } = parseNombre(formData);
   const supabase = await createClient();
 
@@ -57,6 +60,7 @@ export async function renombrarNivel(id: string, formData: FormData) {
 }
 
 export async function eliminarNivel(id: string) {
+  await requerirRol(["super_admin", "direccion"]);
   const supabase = await createClient();
 
   const { count, error: errorConteo } = await supabase
@@ -82,6 +86,7 @@ export async function eliminarNivel(id: string) {
 // ---------- Grados ----------
 
 export async function crearGrado(nivelId: string, formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const { nombre } = parseNombre(formData);
   const supabase = await createClient();
 
@@ -103,6 +108,7 @@ export async function crearGrado(nivelId: string, formData: FormData) {
 }
 
 export async function renombrarGrado(id: string, nivelId: string, formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const { nombre } = parseNombre(formData);
   const supabase = await createClient();
 
@@ -114,6 +120,7 @@ export async function renombrarGrado(id: string, nivelId: string, formData: Form
 }
 
 export async function eliminarGrado(id: string, nivelId: string) {
+  await requerirRol(["super_admin", "direccion"]);
   const supabase = await createClient();
 
   const { count, error: errorConteo } = await supabase
@@ -139,6 +146,7 @@ export async function eliminarGrado(id: string, nivelId: string) {
 // ---------- Grupos ----------
 
 export async function crearGrupo(gradoId: string, formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const { nombre } = parseNombre(formData);
   const supabase = await createClient();
 
@@ -158,6 +166,7 @@ export async function crearGrupo(gradoId: string, formData: FormData) {
 }
 
 export async function renombrarGrupo(id: string, gradoId: string, formData: FormData) {
+  await requerirRol(["super_admin", "direccion"]);
   const { nombre } = parseNombre(formData);
   const supabase = await createClient();
 
@@ -169,6 +178,7 @@ export async function renombrarGrupo(id: string, gradoId: string, formData: Form
 }
 
 export async function eliminarGrupo(id: string, gradoId: string) {
+  await requerirRol(["super_admin", "direccion"]);
   const supabase = await createClient();
 
   const { count, error: errorConteo } = await supabase
