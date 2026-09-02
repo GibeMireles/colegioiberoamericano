@@ -134,19 +134,31 @@ export async function eliminarAsignacion(id: string, gradoId: string) {
     throw new Error(`No se pudo quitar la asignación: ${errorAsignacion.message}`);
   }
 
-  const { error: errorLista } = await supabase
-    .from("materia_alumnos")
-    .delete()
-    .eq("materia_id", asignacion.materia_id)
-    .eq("ciclo_escolar_id", asignacion.ciclo_escolar_id);
-
-  if (errorLista) {
-    throw new Error(`No se pudo quitar la asignación: ${errorLista.message}`);
-  }
-
   const { error } = await supabase.from("asignaciones").delete().eq("id", id);
   if (error) {
     throw new Error(`No se pudo quitar la asignación: ${error.message}`);
+  }
+
+  const { count, error: errorConteo } = await supabase
+    .from("asignaciones")
+    .select("id", { count: "exact", head: true })
+    .eq("materia_id", asignacion.materia_id)
+    .eq("ciclo_escolar_id", asignacion.ciclo_escolar_id);
+
+  if (errorConteo) {
+    throw new Error(`No se pudo quitar la asignación: ${errorConteo.message}`);
+  }
+
+  if (!count) {
+    const { error: errorLista } = await supabase
+      .from("materia_alumnos")
+      .delete()
+      .eq("materia_id", asignacion.materia_id)
+      .eq("ciclo_escolar_id", asignacion.ciclo_escolar_id);
+
+    if (errorLista) {
+      throw new Error(`No se pudo quitar la asignación: ${errorLista.message}`);
+    }
   }
 
   revalidatePath(`/materias/grado/${gradoId}`);
