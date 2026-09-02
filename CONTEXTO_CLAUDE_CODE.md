@@ -206,7 +206,11 @@ replicar a otras escuelas.
    `.flatMap((inscripcion) => inscripcion.alumnos)` asume que la fila
    embebida `alumnos` nunca es `null` — si RLS llega a ocultar una
    fila, esto truena al renderizar en vez de degradarse con
-   gracia. Al escribir cualquier política nueva de "rol X ve todo",
+   gracia. La pieza de Materias repite el mismo patrón en dos
+   funciones de `src/lib/materias/roster.ts`
+   (`obtenerAlumnosDelGrupoDeMateria` y `obtenerAlumnosDeMateria`), así
+   que también hay que revisarlas al habilitar RLS. Al escribir
+   cualquier política nueva de "rol X ve todo",
    usar el patrón `security definer` de `public.es_super_admin()` (ver
    arriba) — una política no puede consultar su propia tabla
    directamente sin causar recursión infinita.

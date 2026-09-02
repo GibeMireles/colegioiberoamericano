@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 import { TarjetaNavegacion } from "@/components/materias/TarjetaNavegacion";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,8 @@ async function obtenerNiveles(): Promise<NivelConConteo[]> {
 }
 
 export default async function MateriasPage() {
+  await requerirRolPagina(["super_admin", "direccion"]);
+
   const niveles = await obtenerNiveles();
 
   return (

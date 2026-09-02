@@ -2,11 +2,12 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerPerfilActual } from "@/lib/perfiles/actual";
 import { InvitarMaestroForm } from "@/components/usuarios/InvitarMaestroForm";
+import type { Rol } from "@/lib/roles";
 import { invitarDocente } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const ETIQUETAS_ROL: Record<string, string> = {
+const ETIQUETAS_ROL: Record<Rol, string> = {
   super_admin: "Super admin",
   direccion: "Dirección",
   caja: "Caja",
@@ -16,7 +17,7 @@ const ETIQUETAS_ROL: Record<string, string> = {
 interface PerfilListado {
   id: string;
   nombre_completo: string;
-  rol: string;
+  rol: Rol;
   creado_en: string;
 }
 

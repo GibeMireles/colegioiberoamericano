@@ -61,10 +61,16 @@ export async function eliminarMateria(id: string, gradoId: string) {
   await requerirRol(["super_admin", "direccion"]);
   const supabase = await createClient();
 
+  const cicloId = await obtenerCicloActivoId();
+  if (!cicloId) {
+    throw new Error("No se pudo verificar la materia: no hay un ciclo escolar activo.");
+  }
+
   const { count, error: errorConteo } = await supabase
     .from("asignaciones")
     .select("id", { count: "exact", head: true })
-    .eq("materia_id", id);
+    .eq("materia_id", id)
+    .eq("ciclo_escolar_id", cicloId);
 
   if (errorConteo) {
     throw new Error(`No se pudo verificar la materia: ${errorConteo.message}`);
@@ -117,6 +123,26 @@ export async function guardarAsignacion(
 export async function eliminarAsignacion(id: string, gradoId: string) {
   await requerirRol(["super_admin", "direccion"]);
   const supabase = await createClient();
+
+  const { data: asignacion, error: errorAsignacion } = await supabase
+    .from("asignaciones")
+    .select("materia_id, ciclo_escolar_id")
+    .eq("id", id)
+    .single();
+
+  if (errorAsignacion) {
+    throw new Error(`No se pudo quitar la asignación: ${errorAsignacion.message}`);
+  }
+
+  const { error: errorLista } = await supabase
+    .from("materia_alumnos")
+    .delete()
+    .eq("materia_id", asignacion.materia_id)
+    .eq("ciclo_escolar_id", asignacion.ciclo_escolar_id);
+
+  if (errorLista) {
+    throw new Error(`No se pudo quitar la asignación: ${errorLista.message}`);
+  }
 
   const { error } = await supabase.from("asignaciones").delete().eq("id", id);
   if (error) {

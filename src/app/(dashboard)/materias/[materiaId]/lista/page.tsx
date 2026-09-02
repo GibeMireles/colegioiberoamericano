@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 import { obtenerAlumnosDelGrupoDeMateria } from "@/lib/materias/roster";
 import { guardarListaMateria } from "./actions";
@@ -79,6 +80,8 @@ export default async function ListaMateriaPage({
 }: {
   params: Promise<{ materiaId: string }>;
 }) {
+  await requerirRolPagina(["super_admin", "direccion"]);
+
   const { materiaId } = await params;
   const contexto = await obtenerContexto(materiaId);
 

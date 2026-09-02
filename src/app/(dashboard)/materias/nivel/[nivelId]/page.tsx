@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 import { TarjetaNavegacion } from "@/components/materias/TarjetaNavegacion";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export default async function MateriasNivelPage({
 }: {
   params: Promise<{ nivelId: string }>;
 }) {
+  await requerirRolPagina(["super_admin", "direccion"]);
+
   const { nivelId } = await params;
   const supabase = await createClient();
 

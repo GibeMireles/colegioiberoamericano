@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
+import { obtenerCicloActivoId } from "@/lib/ciclos/activo";
 import { TarjetaAgregar } from "@/components/alumnos/TarjetaAgregar";
 import { FilaMateria } from "@/components/materias/FilaMateria";
 import {
@@ -61,13 +63,17 @@ async function obtenerContexto(gradoId: string): Promise<ContextoGrado | null> {
   };
 }
 
-async function obtenerAsignacionesDeMateria(materiaId: string): Promise<AsignacionListada[]> {
+async function obtenerAsignacionesDeMateria(
+  materiaId: string,
+  cicloId: string
+): Promise<AsignacionListada[]> {
   const supabase = await createClient();
 
   const { data: asignaciones, error } = await supabase
     .from("asignaciones")
     .select("id, grupo_id, docente_perfil_id")
-    .eq("materia_id", materiaId);
+    .eq("materia_id", materiaId)
+    .eq("ciclo_escolar_id", cicloId);
 
   if (error) {
     throw new Error(`No se pudieron cargar las asignaciones: ${error.message}`);
@@ -96,7 +102,7 @@ async function obtenerAsignacionesDeMateria(materiaId: string): Promise<Asignaci
   );
 }
 
-async function obtenerMaterias(gradoId: string): Promise<MateriaListado[]> {
+async function obtenerMaterias(gradoId: string, cicloId: string): Promise<MateriaListado[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -113,7 +119,7 @@ async function obtenerMaterias(gradoId: string): Promise<MateriaListado[]> {
     (data ?? []).map(async (materia) => ({
       id: materia.id,
       nombre: materia.nombre,
-      asignaciones: await obtenerAsignacionesDeMateria(materia.id),
+      asignaciones: await obtenerAsignacionesDeMateria(materia.id, cicloId),
     }))
   );
 }
@@ -139,6 +145,8 @@ export default async function MateriasGradoPage({
 }: {
   params: Promise<{ gradoId: string }>;
 }) {
+  await requerirRolPagina(["super_admin", "direccion"]);
+
   const { gradoId } = await params;
   const contexto = await obtenerContexto(gradoId);
 
@@ -146,8 +154,13 @@ export default async function MateriasGradoPage({
     notFound();
   }
 
+  const cicloId = await obtenerCicloActivoId();
+  if (!cicloId) {
+    throw new Error("No hay un ciclo escolar activo.");
+  }
+
   const [materias, grupos, docentesListado] = await Promise.all([
-    obtenerMaterias(gradoId),
+    obtenerMaterias(gradoId, cicloId),
     obtenerGruposDelGrado(gradoId),
     obtenerDocentes(),
   ]);
