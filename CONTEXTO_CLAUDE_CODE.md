@@ -269,7 +269,7 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   para asignar un maestro recibía la lista de docentes **vacía**
   (`obtenerDocentes()` consulta `perfiles`, y RLS ocultaba en silencio
   esas filas para cualquiera que no fuera `super_admin`) — ahora es
-  `es_super_admin_o_direccion()`. También se corrigieron 4 sitios (en
+  `es_super_admin_o_direccion()`. También se corrigieron 5 sitios (en
   `src/lib/materias/roster.ts`, `src/lib/calificaciones/roster.ts`, y el
   reemplazo de `alumnos/grupo/[grupoId]/page.tsx`) que asumían que un
   embed de Supabase (`inscripcion.alumnos`) siempre viene no-nulo — con
