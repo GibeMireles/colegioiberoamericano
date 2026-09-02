@@ -205,3 +205,25 @@ create table materia_alumnos (
   ciclo_escolar_id uuid not null references ciclos_escolares(id)
 );
 create unique index idx_materia_alumnos_unica on materia_alumnos(materia_id, alumno_id, ciclo_escolar_id);
+
+-- ==========================================================
+-- Captura de calificaciones
+-- ==========================================================
+alter table asignaciones
+  add column parcial1_max numeric,
+  add column parcial2_max numeric,
+  add column producto_max numeric;
+
+create table calificaciones (
+  id uuid primary key default gen_random_uuid(),
+  asignacion_id uuid not null references asignaciones(id),
+  alumno_id uuid not null references alumnos(id),
+  parcial1_adas numeric,
+  parcial1_examen numeric,
+  parcial2_adas numeric,
+  parcial2_examen numeric,
+  producto_proyecto numeric,
+  producto_examen numeric,
+  actualizado_en timestamptz not null default now()
+);
+create unique index idx_calificaciones_unica on calificaciones(asignacion_id, alumno_id);

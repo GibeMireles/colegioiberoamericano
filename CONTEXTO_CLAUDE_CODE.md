@@ -162,6 +162,73 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   pasando la referencia de la Server Action `eliminarAsignacion` sin
   envolver y haciendo `.bind()` de `id` + `gradoId` del lado del cliente —
   el mismo patrón que ya se usaba correctamente para `accionCrear`.
+- **Calificaciones, pieza 3: Captura de calificaciones** — última de las 3
+  sub-piezas, ver `docs/superpowers/specs/2026-09-02-captura-calificaciones-design.md`
+  y `docs/superpowers/plans/2026-09-02-captura-calificaciones.md`. Pantalla
+  calcada del Excel real que usa la escuela cada semestre: `/calificaciones`
+  lista las asignaciones del docente en sesión (o todas, si es
+  `super_admin`/`direccion`); `/calificaciones/[asignacionId]` es la
+  captura propiamente dicha — Parcial 1 (ADAS + Examen), Parcial 2 (ADAS +
+  Examen) y Producto (Proyecto + Examen), cada uno como subtotal de dos
+  campos, más el Total como suma de los 3 subtotales (`calcularSubtotal` /
+  `calcularTotal` en `src/lib/calificaciones/calculos.ts`, con tests
+  unitarios). Cada asignación tiene su propia ponderación
+  (`parcial1_max`, `parcial2_max`, `producto_max` en `asignaciones`) que el
+  maestro dueño define la primera vez que abre su pantalla de captura
+  (`guardarPonderacion`) — hasta entonces la captura de calificaciones
+  queda bloqueada. La validación es solo a nivel de subtotal contra su
+  máximo (ej. Parcial 1 no puede superar `parcial1_max`), nunca por
+  campo individual (ADAS y Examen se reparten los puntos como decida el
+  maestro). Acceso restringido al docente dueño de la asignación o a
+  `super_admin`/`direccion` (`requerirAccesoAsignacion`,
+  `src/lib/asignaciones/requerirAccesoAsignacion.ts`), y la lista de
+  alumnos a capturar se re-deriva siempre en el servidor a partir de
+  `asignacionId` (nunca se confía en los `alumnoId` que vengan en el
+  `FormData`), así que no hay forma de inyectar una calificación para un
+  alumno fuera del roster real. `eliminarAsignacion` (en
+  `materias/actions.ts`) ahora bloquea el borrado si la asignación ya
+  tiene filas en `calificaciones` — evita perder capturas por accidente
+  al reorganizar materias.
+  Esta pieza resuelve un pendiente de diseño real que había quedado
+  parqueado explícitamente en la pieza 2 (Materias + asignación): la
+  vieja `obtenerAlumnosDeMateria` mezclaba el roster de TODOS los grupos
+  de una materia cuando esa materia tenía más de un grupo asignado (una
+  materia no está atada a un solo grupo, `asignaciones` la vincula
+  materia+grupo+ciclo N a N). La nueva `obtenerAlumnosDeAsignacion`
+  (`src/lib/calificaciones/roster.ts`) recibe un `asignacionId` concreto
+  en vez de un `materiaId` suelto, así que queda acotada a un solo grupo
+  desde el inicio; y cuando existe lista propia (override), devuelve la
+  **intersección** entre esa lista y el roster de ese grupo específico —
+  no la lista propia cruda, que podía abarcar alumnos de otros grupos de
+  la misma materia. Verificado con trazas SQL directas contra el
+  proyecto real para ambos casos (con y sin override, materia con 1 y
+  con 2+ grupos).
+  **Limitación importante de esta verificación:** a diferencia de las
+  piezas anteriores, esta NO se pudo probar a mano en el navegador. Este
+  entorno sandboxed no tiene salida de red hacia Supabase desde un
+  `fetch` normal ejecutado por `npm run dev` (solo la herramienta MCP de
+  Supabase tiene salida funcional), así que `/login` responde 500
+  ("fetch failed") en cuanto se intenta cargar la app en un navegador
+  aquí. Las 8 tareas de esta pieza se verificaron en cambio con: (a)
+  tests unitarios para los dos módulos que sí son testeables sin DB
+  (`calculos.ts`, `schema.ts`), (b) trazas SQL directas contra la base
+  de datos real de Supabase para cada función de I/O y cada Server
+  Action — resolución de roster, el bloqueo de ponderación sin definir,
+  la semántica de upsert-on-conflict, el guard de borrado bloqueado por
+  calificaciones — con evidencia concreta de antes/después en cada
+  revisión de tarea, y (c) trazado a nivel de código de la validación de
+  la ruta de escritura (rechazo subtotal-vs-máximo, re-derivación del
+  roster que anula cualquier intento de manipular `alumnoId`), tanto por
+  quien implementó cada tarea como por su revisor independiente. Nada del
+  DOM real (cómo se ve el formulario, el texto de error en pantalla, el
+  comportamiento de `required` de HTML5) se observó visualmente en
+  ningún momento. Queda como pendiente explícito: alguien tiene que
+  entrar de verdad y clickear esta pantalla completa antes de confiar en
+  ella para capturar calificaciones de clases reales — la lógica de
+  datos y de validación está verificada a fondo, pero no lo visual.
+  Con esta pieza, **las 3 sub-piezas de Calificaciones quedan completas**
+  (Autenticación + rol Docente, Materias + asignación, Captura de
+  calificaciones).
 
 ## Alcance del MVP — 3 módulos
 
@@ -186,39 +253,45 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. **Calificaciones, pieza 3: captura de calificaciones** — última de
-   las 3 sub-piezas (ver "Estado actual" arriba), calcada del Excel real
-   que la escuela usa cada semestre. Puede apoyarse directo en
-   `obtenerAlumnosDeMateria` (`src/lib/materias/roster.ts`), ya
-   implementada y verificada en vivo, para resolver la lista de alumnos
-   a capturar por materia+ciclo sin reimplementar la lógica de
-   override.
-2. Configurar RLS por rol en el resto de las tablas (`perfiles.rol`) —
-   hoy solo `perfiles` tiene RLS; las demás tablas (incluidas las 3
-   nuevas de Materias: `materias`, `asignaciones`, `materia_alumnos`)
-   siguen sin RLS (última confirmación por `get_advisors` fue antes de
-   agregar esas 3), expuestas por completo a la anon
-   key — esperado mientras Alumnos/Pagos/Asistencia no piden login
-   (decisión explícita de la pieza de Auth), pero es lo primero que hay
-   que cerrar antes de exponer esto fuera de la red del colegio.
-   Habilitar RLS obliga además a revisar `obtenerAlumnosDelGrupo` en
-   `src/app/(dashboard)/alumnos/grupo/[grupoId]/page.tsx`, porque su
+**Hito: con Captura de calificaciones terminada, las 3 sub-piezas de
+Calificaciones (Autenticación + rol Docente, Materias + asignación,
+Captura de calificaciones) quedan completas.** Ya no queda ninguna
+sub-pieza de Calificaciones pendiente de diseñar ni implementar.
+
+0. **Verificar Captura de calificaciones a mano en el navegador** antes de
+   que la escuela dependa de esta pantalla para clases reales. Toda la
+   lógica de datos y de validación se probó a fondo con trazas SQL y
+   revisión de código (ver "Estado actual" arriba), pero nada del render
+   real (formulario, mensajes de error en pantalla, `required` de HTML5)
+   se observó visualmente — este sandbox no tiene salida de red hacia
+   Supabase desde `npm run dev`, así que `/login` no carga aquí. Hacerlo
+   con un docente real y con super_admin/dirección antes de dar la pieza
+   por completamente cerrada.
+1. Configurar RLS por rol en el resto de las tablas (`perfiles.rol`) —
+   hoy solo `perfiles` tiene RLS; las demás tablas (incluidas las de
+   Materias: `materias`, `asignaciones`, `materia_alumnos`, y la nueva
+   `calificaciones`) siguen sin RLS (última confirmación por
+   `get_advisors` fue antes de agregar `calificaciones`), expuestas por
+   completo a la anon key — esperado mientras Alumnos/Pagos/Asistencia no
+   piden login (decisión explícita de la pieza de Auth), pero es lo
+   primero que hay que cerrar antes de exponer esto fuera de la red del
+   colegio. Habilitar RLS obliga además a revisar `obtenerAlumnosDelGrupo`
+   en `src/app/(dashboard)/alumnos/grupo/[grupoId]/page.tsx`, porque su
    `.flatMap((inscripcion) => inscripcion.alumnos)` asume que la fila
    embebida `alumnos` nunca es `null` — si RLS llega a ocultar una
    fila, esto truena al renderizar en vez de degradarse con
-   gracia. La pieza de Materias repite el mismo patrón en dos
-   funciones de `src/lib/materias/roster.ts`
-   (`obtenerAlumnosDelGrupoDeMateria` y `obtenerAlumnosDeMateria`), así
-   que también hay que revisarlas al habilitar RLS. Al escribir
-   cualquier política nueva de "rol X ve todo",
-   usar el patrón `security definer` de `public.es_super_admin()` (ver
-   arriba) — una política no puede consultar su propia tabla
-   directamente sin causar recursión infinita.
-3. Extender el patrón de Alumnos a Pagos/colegiaturas y Listas/asistencia
-   cuando el módulo de Alumnos quede validado con más uso real. El
-   punto de patrón que estaba pendiente de decidir ya quedó resuelto:
-   las Server Actions de escritura reciben el id del padre relevante
-   como parámetro explícito (`crearAlumno(grupoId, ...)`,
+   gracia. Las piezas de Materias y Calificaciones repiten el mismo
+   patrón en varias funciones (`src/lib/materias/roster.ts` y
+   `src/lib/calificaciones/roster.ts`), así que también hay que
+   revisarlas al habilitar RLS. Al escribir cualquier política nueva de
+   "rol X ve todo", usar el patrón `security definer` de
+   `public.es_super_admin()` (ver arriba) — una política no puede
+   consultar su propia tabla directamente sin causar recursión infinita.
+2. Extender el patrón de Alumnos/Calificaciones a Pagos/colegiaturas y
+   Listas/asistencia cuando el módulo de Alumnos quede validado con más
+   uso real. El punto de patrón que estaba pendiente de decidir ya quedó
+   resuelto: las Server Actions de escritura reciben el id del padre
+   relevante como parámetro explícito (`crearAlumno(grupoId, ...)`,
    `crearGrupo(gradoId, ...)`, etc.) — Pagos/Asistencia deberían seguir
    el mismo patrón (ej. Server Actions de pagos recibiendo
    `alumnoId`/`cargoId` explícito, no leyendo de variables de entorno
