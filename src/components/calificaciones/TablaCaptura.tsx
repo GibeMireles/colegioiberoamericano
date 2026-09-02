@@ -16,9 +16,15 @@ const CAMPO_CLASE = "w-20 rounded-md border border-zinc-300 px-1 py-0.5 text-sm"
 export function TablaCaptura({
   filas,
   accionGuardar,
+  parcial1Max,
+  parcial2Max,
+  productoMax,
 }: {
   filas: FilaCaptura[];
   accionGuardar: (formData: FormData) => void | Promise<void>;
+  parcial1Max: number;
+  parcial2Max: number;
+  productoMax: number;
 }) {
   return (
     <form action={accionGuardar} className="mt-6 overflow-x-auto">
@@ -28,13 +34,13 @@ export function TablaCaptura({
             <th className="p-2">Alumno</th>
             <th className="p-2">ADAS 1</th>
             <th className="p-2">Examen 1</th>
-            <th className="p-2">Calif 1</th>
+            <th className="p-2">Calif 1 / {parcial1Max}</th>
             <th className="p-2">ADAS 2</th>
             <th className="p-2">Examen 2</th>
-            <th className="p-2">Calif 2</th>
+            <th className="p-2">Calif 2 / {parcial2Max}</th>
             <th className="p-2">Proyecto</th>
             <th className="p-2">Examen prod.</th>
-            <th className="p-2">Subtotal</th>
+            <th className="p-2">Subtotal / {productoMax}</th>
             <th className="p-2">Total</th>
           </tr>
         </thead>

@@ -44,7 +44,7 @@ export async function guardarCalificaciones(asignacionId: string, formData: Form
   const alumnos = await obtenerAlumnosDeAsignacion(asignacionId);
   const supabase = await createClient();
 
-  const filas = alumnos.map((alumno) => {
+  const filas = alumnos.flatMap((alumno) => {
     const bruto = calificacionSchema.parse({
       parcial1_adas: formData.get(`parcial1_adas-${alumno.id}`) ?? undefined,
       parcial1_examen: formData.get(`parcial1_examen-${alumno.id}`) ?? undefined,
@@ -53,6 +53,18 @@ export async function guardarCalificaciones(asignacionId: string, formData: Form
       producto_proyecto: formData.get(`producto_proyecto-${alumno.id}`) ?? undefined,
       producto_examen: formData.get(`producto_examen-${alumno.id}`) ?? undefined,
     });
+
+    const sinCapturar =
+      bruto.parcial1_adas === undefined &&
+      bruto.parcial1_examen === undefined &&
+      bruto.parcial2_adas === undefined &&
+      bruto.parcial2_examen === undefined &&
+      bruto.producto_proyecto === undefined &&
+      bruto.producto_examen === undefined;
+
+    if (sinCapturar) {
+      return [];
+    }
 
     const nombreCompleto = [alumno.apellido_paterno, alumno.apellido_materno, alumno.nombres]
       .filter(Boolean)
@@ -76,16 +88,19 @@ export async function guardarCalificaciones(asignacionId: string, formData: Form
       throw new Error(`${nombreCompleto}: el Producto no puede superar ${asignacion.producto_max} puntos.`);
     }
 
-    return {
-      asignacion_id: asignacionId,
-      alumno_id: alumno.id,
-      parcial1_adas: bruto.parcial1_adas ?? null,
-      parcial1_examen: bruto.parcial1_examen ?? null,
-      parcial2_adas: bruto.parcial2_adas ?? null,
-      parcial2_examen: bruto.parcial2_examen ?? null,
-      producto_proyecto: bruto.producto_proyecto ?? null,
-      producto_examen: bruto.producto_examen ?? null,
-    };
+    return [
+      {
+        asignacion_id: asignacionId,
+        alumno_id: alumno.id,
+        parcial1_adas: bruto.parcial1_adas ?? null,
+        parcial1_examen: bruto.parcial1_examen ?? null,
+        parcial2_adas: bruto.parcial2_adas ?? null,
+        parcial2_examen: bruto.parcial2_examen ?? null,
+        producto_proyecto: bruto.producto_proyecto ?? null,
+        producto_examen: bruto.producto_examen ?? null,
+        actualizado_en: new Date().toISOString(),
+      },
+    ];
   });
 
   if (filas.length > 0) {

@@ -94,66 +94,75 @@ export default async function CalificacionesAsignacionPage({
         {contexto.materiaNombre} — {contexto.gradoNombre}, Grupo {contexto.grupoNombre}
       </h1>
 
-      {!ponderacionDefinida ? (
-        <div className="mt-6 max-w-sm">
-          <p className="text-sm text-zinc-600">
-            Define cuántos puntos vale cada parcial y el producto antes de capturar
-            calificaciones.
-          </p>
-          <form action={guardarPonderacion.bind(null, asignacionId)} className="mt-4 space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700">
-                Puntos del Parcial 1
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="parcial1_max"
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700">
-                Puntos del Parcial 2
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="parcial2_max"
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700">
-                Puntos del Producto
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="producto_max"
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Guardar ponderación
-            </button>
-          </form>
-        </div>
-      ) : filas.length === 0 ? (
+      <div className="mt-6 max-w-sm">
+        <h2 className="text-lg font-semibold text-zinc-900">
+          {ponderacionDefinida ? "Ponderación" : "Define la ponderación"}
+        </h2>
+        <p className="text-sm text-zinc-600">
+          Define cuántos puntos vale cada parcial y el producto antes de capturar
+          calificaciones. Puedes cambiar estos valores cuando lo necesites.
+        </p>
+        <form action={guardarPonderacion.bind(null, asignacionId)} className="mt-4 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-zinc-700">
+              Puntos del Parcial 1
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              name="parcial1_max"
+              defaultValue={asignacion.parcial1_max ?? ""}
+              required
+              className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700">
+              Puntos del Parcial 2
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              name="parcial2_max"
+              defaultValue={asignacion.parcial2_max ?? ""}
+              required
+              className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700">
+              Puntos del Producto
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              name="producto_max"
+              defaultValue={asignacion.producto_max ?? ""}
+              required
+              className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            Guardar ponderación
+          </button>
+        </form>
+      </div>
+
+      {!ponderacionDefinida ? null : filas.length === 0 ? (
         <p className="mt-6 text-zinc-600">Este grupo todavía no tiene alumnos.</p>
       ) : (
         <TablaCaptura
           filas={filas}
           accionGuardar={guardarCalificaciones.bind(null, asignacionId)}
+          parcial1Max={asignacion.parcial1_max!}
+          parcial2Max={asignacion.parcial2_max!}
+          productoMax={asignacion.producto_max!}
         />
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -10,7 +11,7 @@ export default function Error({
     <div>
       <h1 className="text-2xl font-semibold text-zinc-900">Algo salió mal</h1>
       <p className="mt-2 text-zinc-600">
-        Ocurrió un error al procesar tu solicitud. Intenta de nuevo.
+        {error.message || "Ocurrió un error al procesar tu solicitud. Intenta de nuevo."}
       </p>
       <button
         type="button"
