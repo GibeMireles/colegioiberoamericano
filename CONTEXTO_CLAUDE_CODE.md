@@ -128,9 +128,8 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   con `public.es_super_admin()`; si en el futuro se agregan más
   políticas de "rol X puede ver todo", usar el mismo patrón.
 - **Calificaciones, pieza 2: Materias + asignación docente-materia-grupo**
-  — spec y plan de implementación escritos, **sin ejecutar todavía** —
-  ver `docs/superpowers/specs/2026-09-01-materias-asignacion-design.md`
-  y `docs/superpowers/plans/2026-09-01-materias-asignacion.md`. Define
+  — ver `docs/superpowers/specs/2026-09-01-materias-asignacion-design.md`
+  y `docs/superpowers/plans/2026-09-01-materias-asignacion.md`. Agrega
   3 tablas nuevas (`materias`, `asignaciones`, `materia_alumnos`): cada
   materia pertenece a un grado específico (no se repite entre grados),
   exactamente un maestro por materia+grupo+ciclo, y la lista de alumnos
@@ -140,10 +139,29 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   propio subconjunto de alumnos del mismo grupo). Pantalla de
   administración bajo `/materias`, visible solo a `super_admin` y
   `direccion`, con la misma navegación por tarjetas Nivel → Grado que ya
-  existe en Alumnos pero de solo lectura. El plan también endurece
+  existe en Alumnos pero de solo lectura. También endurece
   `PerfilActual.rol` de `string` suelto a la unión de los 4 valores
   reales (`src/lib/roles.ts`), quedó pendiente de la pieza de Auth. Sin
-  RLS nuevo (mismo criterio que el resto del proyecto hoy).
+  RLS nuevo en las 3 tablas nuevas (mismo criterio que el resto del
+  proyecto hoy — ver pendiente #2 abajo).
+  **Implementado y verificado end-to-end** contra el proyecto real de
+  Supabase, incluida verificación en vivo de que `obtenerAlumnosDeMateria`
+  (la función que la pieza 3, Calificaciones, va a importar directo) aplica
+  correctamente la regla "el override reemplaza, no se suma a, la lista del
+  grupo" en ambos sentidos: sin override devuelve el grupo completo, con
+  override devuelve exactamente esa lista (los alumnos excluidos no
+  aparecen).
+  Bug real encontrado durante la verificación en vivo en el navegador (y
+  corregido antes de dar por buena la pieza): `page.tsx` pasaba una
+  closure normal (`(id) => eliminarAsignacion(id, gradoId)`) a
+  `AsignacionesMateria`, un componente `"use client"` — Next.js prohíbe
+  pasar funciones que no sean Server Actions genuinas a través de esa
+  frontera cliente/servidor. El build no lo detectó (la ruta es
+  `force-dynamic`; la violación solo se dispara al renderizar de verdad),
+  solo lo detectó la verificación manual en el navegador. Se corrigió
+  pasando la referencia de la Server Action `eliminarAsignacion` sin
+  envolver y haciendo `.bind()` de `id` + `gradoId` del lado del cliente —
+  el mismo patrón que ya se usaba correctamente para `accionCrear`.
 
 ## Alcance del MVP — 3 módulos
 
@@ -168,14 +186,18 @@ replicar a otras escuelas.
 
 ## Próximos pasos pendientes
 
-1. **Calificaciones, pieza 2: Materias + asignación docente-materia-grupo**
-   — spec y plan ya escritos (ver "Estado actual" arriba), **listo para
-   ejecutar**: 9 tasks TDD, incluye migración de 3 tablas nuevas y
-   commit final de documentación. Pieza 3 es la captura en sí, calcada
-   del Excel real.
+1. **Calificaciones, pieza 3: captura de calificaciones** — última de
+   las 3 sub-piezas (ver "Estado actual" arriba), calcada del Excel real
+   que la escuela usa cada semestre. Puede apoyarse directo en
+   `obtenerAlumnosDeMateria` (`src/lib/materias/roster.ts`), ya
+   implementada y verificada en vivo, para resolver la lista de alumnos
+   a capturar por materia+ciclo sin reimplementar la lógica de
+   override.
 2. Configurar RLS por rol en el resto de las tablas (`perfiles.rol`) —
-   hoy solo `perfiles` tiene RLS; las otras 11 tablas siguen sin RLS
-   (confirmado por `get_advisors`), expuestas por completo a la anon
+   hoy solo `perfiles` tiene RLS; las demás tablas (incluidas las 3
+   nuevas de Materias: `materias`, `asignaciones`, `materia_alumnos`)
+   siguen sin RLS (última confirmación por `get_advisors` fue antes de
+   agregar esas 3), expuestas por completo a la anon
    key — esperado mientras Alumnos/Pagos/Asistencia no piden login
    (decisión explícita de la pieza de Auth), pero es lo primero que hay
    que cerrar antes de exponer esto fuera de la red del colegio.

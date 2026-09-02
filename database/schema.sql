@@ -175,3 +175,33 @@ create policy "super_admin lee todos los perfiles"
 
 alter table perfiles
   add constraint perfiles_usuario_auth_id_key unique (usuario_auth_id);
+
+-- ==========================================================
+-- Materias + asignación docente-materia-grupo
+-- ==========================================================
+create table materias (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  grado_id uuid not null references grados(id),
+  orden int
+);
+create unique index idx_materias_nombre_por_grado on materias(grado_id, nombre);
+
+create table asignaciones (
+  id uuid primary key default gen_random_uuid(),
+  materia_id uuid not null references materias(id),
+  grupo_id uuid not null references grupos(id),
+  docente_perfil_id uuid not null references perfiles(id),
+  ciclo_escolar_id uuid not null references ciclos_escolares(id)
+);
+create unique index idx_asignaciones_unica on asignaciones(materia_id, grupo_id, ciclo_escolar_id);
+
+-- Solo se llena para materias con lista propia (ej. niveles de inglés).
+-- Si no hay filas para una materia+ciclo, la lista es el grupo completo.
+create table materia_alumnos (
+  id uuid primary key default gen_random_uuid(),
+  materia_id uuid not null references materias(id),
+  alumno_id uuid not null references alumnos(id),
+  ciclo_escolar_id uuid not null references ciclos_escolares(id)
+);
+create unique index idx_materia_alumnos_unica on materia_alumnos(materia_id, alumno_id, ciclo_escolar_id);
