@@ -40,7 +40,7 @@ export async function obtenerAlumnosDelGrupoDeMateria(
     throw new Error(`No se pudo cargar la lista de alumnos: ${errorInscripciones.message}`);
   }
 
-  return (inscripciones ?? []).flatMap((inscripcion) => inscripcion.alumnos);
+  return (inscripciones ?? []).flatMap((inscripcion) => inscripcion.alumnos ?? []);
 }
 
 export async function obtenerAlumnosDeMateria(
@@ -61,7 +61,7 @@ export async function obtenerAlumnosDeMateria(
   }
 
   if (listaPropia && listaPropia.length > 0) {
-    return listaPropia.flatMap((fila) => fila.alumnos);
+    return listaPropia.flatMap((fila) => fila.alumnos ?? []);
   }
 
   return obtenerAlumnosDelGrupoDeMateria(materiaId, cicloId);

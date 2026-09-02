@@ -25,7 +25,7 @@ export async function obtenerAlumnosDeAsignacion(asignacionId: string): Promise<
     throw new Error(`No se pudo cargar la lista de alumnos: ${errorInscripciones.message}`);
   }
 
-  const alumnosDelGrupo = (inscripciones ?? []).flatMap((inscripcion) => inscripcion.alumnos);
+  const alumnosDelGrupo = (inscripciones ?? []).flatMap((inscripcion) => inscripcion.alumnos ?? []);
 
   // Embed sancionado (ver Global Constraints del plan): materia_alumnos -> alumnos.
   const { data: listaPropia, error: errorLista } = await supabase
@@ -43,7 +43,7 @@ export async function obtenerAlumnosDeAsignacion(asignacionId: string): Promise<
   }
 
   const idsListaPropia = new Set(
-    listaPropia.flatMap((fila) => fila.alumnos).map((alumno) => alumno.id)
+    listaPropia.flatMap((fila) => fila.alumnos ?? []).map((alumno) => alumno.id)
   );
 
   return alumnosDelGrupo.filter((alumno) => idsListaPropia.has(alumno.id));
