@@ -134,6 +134,18 @@ export async function eliminarAsignacion(id: string, gradoId: string) {
     throw new Error(`No se pudo quitar la asignación: ${errorAsignacion.message}`);
   }
 
+  const { count: countCalificaciones, error: errorCalificaciones } = await supabase
+    .from("calificaciones")
+    .select("id", { count: "exact", head: true })
+    .eq("asignacion_id", id);
+
+  if (errorCalificaciones) {
+    throw new Error(`No se pudo quitar la asignación: ${errorCalificaciones.message}`);
+  }
+  if (countCalificaciones && countCalificaciones > 0) {
+    throw new Error("No se puede eliminar: esta asignación tiene calificaciones capturadas.");
+  }
+
   const { error } = await supabase.from("asignaciones").delete().eq("id", id);
   if (error) {
     throw new Error(`No se pudo quitar la asignación: ${error.message}`);
