@@ -229,6 +229,79 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   Con esta pieza, **las 3 sub-piezas de Calificaciones quedan completas**
   (Autenticación + rol Docente, Materias + asignación, Captura de
   calificaciones).
+- **RLS completo + login en Alumnos/Pagos/Asistencia** — ver
+  `docs/superpowers/specs/2026-09-02-rls-completo-design.md` y
+  `docs/superpowers/plans/2026-09-02-rls-completo.md`. Cierra el pendiente
+  #1 que quedó abierto desde la pieza de Autenticación: hoy RLS está
+  activo en las **15 tablas** que faltaban (`configuracion`,
+  `ciclos_escolares`, `niveles`, `grados`, `grupos`, `materias`,
+  `alumnos`, `inscripciones`, `asignaciones`, `materia_alumnos`,
+  `calificaciones`, `conceptos_pago`, `cargos`, `pagos`, `asistencias`) —
+  `perfiles` ya lo tenía. 7 funciones helper nuevas (`es_direccion`,
+  `es_super_admin_o_direccion`, `es_docente`, `es_caja`, `mi_perfil_id`,
+  `docente_tiene_grupo`, `docente_tiene_materia`,
+  `docente_tiene_asignacion`) extienden el mismo patrón `security
+  definer` + `stable` de `es_super_admin()` (evita la recursión infinita
+  de una política que consulta su propia tabla) a cada chequeo de rol y
+  de alcance que hacía falta. Matriz de acceso resultante: **Alumnos**
+  `super_admin`/`direccion`/`caja` ven todo, `docente` solo lee los
+  alumnos de sus propios grupos asignados (vía `asignaciones` → ciclo
+  activo, nunca la escuela completa); **Pagos**
+  `super_admin`/`direccion`/`caja`, sin acceso para `docente`;
+  **Asistencia** `super_admin`/`direccion`/`docente` (scoped a sus
+  grupos), sin acceso para `caja`. Alumnos/Pagos/Asistencia ahora exigen
+  login igual que Materias/Calificaciones: las 12 Server Actions de
+  Alumnos (`actions.ts`, `estructura-actions.ts`) ganaron
+  `requerirRol(["super_admin", "direccion"])`, las 6 páginas de Alumnos
+  ganaron `requerirRolPagina` (4 de lectura con `docente` incluido, las 2
+  de alta/edición sin `docente` — un docente de solo lectura no debe
+  poder abrir un formulario de escritura), y el listado por grupo oculta
+  "Agregar alumno" y toda la columna "Acciones" cuando el rol es
+  `docente`. Vale la pena remarcarlo: el módulo Alumnos no tenía **ningún**
+  chequeo de rol hasta esta pieza — se construyó antes de que existiera
+  login en el proyecto, así que cualquiera con la URL podía dar de alta,
+  editar o dar de baja alumnos. Pagos y Asistencia (todavía
+  placeholders) ganaron el mismo `requerirRolPagina`, y `middleware.ts`
+  ahora protege `/alumnos`, `/pagos`, `/asistencia` además de
+  `/usuarios`, `/materias`, `/calificaciones`. De regalo, un bug real
+  preexistente encontrado y corregido: la política de `perfiles` era
+  `super_admin`-only, así que un usuario `direccion` que abría Materias
+  para asignar un maestro recibía la lista de docentes **vacía**
+  (`obtenerDocentes()` consulta `perfiles`, y RLS ocultaba en silencio
+  esas filas para cualquiera que no fuera `super_admin`) — ahora es
+  `es_super_admin_o_direccion()`. También se corrigieron 4 sitios (en
+  `src/lib/materias/roster.ts`, `src/lib/calificaciones/roster.ts`, y el
+  reemplazo de `alumnos/grupo/[grupoId]/page.tsx`) que asumían que un
+  embed de Supabase (`inscripcion.alumnos`) siempre viene no-nulo — con
+  RLS activo, un embed puede legítimamente venir oculto para quien no
+  tiene acceso a esa fila, así que ahora se filtra. El texto literal del
+  plan proponía `x ? [x] : []`; en la práctica eso no compiló porque
+  Supabase infiere estos embeds como tipo arreglo en este proyecto, no
+  `object | null` — el fix real usa `x ?? []`, revisado y confirmado
+  equivalente por el revisor de cada tarea. `get_advisors` confirma que
+  el advisory `rls_disabled` ya no aparece para ninguna tabla, y de paso
+  reveló un WARN preexistente (no introducido por esta pieza, y no
+  corregido): las 8 funciones `security definer` (las 7 nuevas más
+  `es_super_admin()`) son invocables vía RPC de PostgREST por roles
+  anónimo/autenticado — evaluado como bajo riesgo (son checks booleanos
+  de "¿el que llama es X?"; un anónimo sin sesión solo recibe `false`,
+  sin fuga de datos), mismo carácter que ya tenía `es_super_admin()`
+  antes de esta pieza — queda señalado para que una persona lo decida,
+  no se auto-corrigió.
+  **Limitación de verificación, más seria aquí que en piezas
+  anteriores:** ninguna política de RLS se pudo probar con una sesión
+  real autenticada en este entorno — el login con enlace mágico requiere
+  clickear un correo, y la herramienta MCP de Supabase corre con
+  privilegios de servicio, así que siempre ve todo sin importar RLS
+  (tampoco sirve para verificar el acceso por rol). La verificación de
+  cada tarea fue a nivel de código: leer el SQL real de cada política,
+  las funciones helper, y dónde quedó el chequeo de rol en el código de
+  la app, razonando la corrección — nunca una prueba ejecutada contra
+  una sesión real de `docente`/`caja`/`direccion`. Esto es más grave que
+  el equivalente pendiente de Captura de calificaciones (que era de
+  UX/mensajes de error): aquí lo que no se probó de verdad es un control
+  de seguridad — quién puede ver y escribir qué datos. Queda como
+  pendiente explícito y prioritario, ver "Próximos pasos pendientes".
 
 ## Alcance del MVP — 3 módulos
 
@@ -258,35 +331,38 @@ Calificaciones (Autenticación + rol Docente, Materias + asignación,
 Captura de calificaciones) quedan completas.** Ya no queda ninguna
 sub-pieza de Calificaciones pendiente de diseñar ni implementar.
 
-0. **Verificar Captura de calificaciones a mano en el navegador** antes de
-   que la escuela dependa de esta pantalla para clases reales. Toda la
-   lógica de datos y de validación se probó a fondo con trazas SQL y
-   revisión de código (ver "Estado actual" arriba), pero nada del render
-   real (formulario, mensajes de error en pantalla, `required` de HTML5)
-   se observó visualmente — este sandbox no tiene salida de red hacia
-   Supabase desde `npm run dev`, así que `/login` no carga aquí. Hacerlo
-   con un docente real y con super_admin/dirección antes de dar la pieza
-   por completamente cerrada.
-1. Configurar RLS por rol en el resto de las tablas (`perfiles.rol`) —
-   hoy solo `perfiles` tiene RLS; las demás tablas (incluidas las de
-   Materias: `materias`, `asignaciones`, `materia_alumnos`, y la nueva
-   `calificaciones`) siguen sin RLS (última confirmación por
-   `get_advisors` fue antes de agregar `calificaciones`), expuestas por
-   completo a la anon key — esperado mientras Alumnos/Pagos/Asistencia no
-   piden login (decisión explícita de la pieza de Auth), pero es lo
-   primero que hay que cerrar antes de exponer esto fuera de la red del
-   colegio. Habilitar RLS obliga además a revisar `obtenerAlumnosDelGrupo`
-   en `src/app/(dashboard)/alumnos/grupo/[grupoId]/page.tsx`, porque su
-   `.flatMap((inscripcion) => inscripcion.alumnos)` asume que la fila
-   embebida `alumnos` nunca es `null` — si RLS llega a ocultar una
-   fila, esto truena al renderizar en vez de degradarse con
-   gracia. Las piezas de Materias y Calificaciones repiten el mismo
-   patrón en varias funciones (`src/lib/materias/roster.ts` y
-   `src/lib/calificaciones/roster.ts`), así que también hay que
-   revisarlas al habilitar RLS. Al escribir cualquier política nueva de
-   "rol X ve todo", usar el patrón `security definer` de
-   `public.es_super_admin()` (ver arriba) — una política no puede
-   consultar su propia tabla directamente sin causar recursión infinita.
+0. **Verificar a mano, con las 4 cuentas reales, en el navegador — dos
+   cosas pendientes que conviene hacer en la misma sesión de pruebas,
+   porque las dos requieren la misma sesión autenticada real:**
+   - **(Seguridad, prioridad alta) Verificación real de RLS por rol.**
+     Ninguna política de RLS de la pieza "RLS completo + login en
+     Alumnos/Pagos/Asistencia" (ver "Estado actual" arriba) se probó
+     contra una sesión real — solo se trazó código contra la matriz del
+     spec, porque este sandbox no puede simular un login real ni usar el
+     MCP de Supabase para esto (corre con privilegios de servicio, ignora
+     RLS siempre). Antes de exponer la plataforma fuera de la red del
+     colegio hay que entrar de verdad con las 4 cuentas
+     (`super_admin`/`direccion`/`caja`/`docente`) y confirmar que cada
+     una ve exactamente lo que la matriz dice y nada más — en particular
+     que un `docente` NO puede ver alumnos fuera de sus grupos ni entrar
+     a Pagos, y que `caja` no puede entrar a Asistencia. Esto es un
+     control de seguridad real, no un asunto de UX — tiene más peso que
+     el punto de abajo.
+   - **(UX, prioridad menor) Verificar Captura de calificaciones a mano
+     en el navegador** antes de que la escuela dependa de esta pantalla
+     para clases reales. Toda la lógica de datos y de validación se
+     probó a fondo con trazas SQL y revisión de código (ver "Estado
+     actual" arriba), pero nada del render real (formulario, mensajes de
+     error en pantalla, `required` de HTML5) se observó visualmente —
+     este sandbox no tiene salida de red hacia Supabase desde `npm run
+     dev`, así que `/login` no carga aquí. Hacerlo con un docente real y
+     con super_admin/dirección antes de dar la pieza por completamente
+     cerrada.
+1. ~~Configurar RLS por rol en el resto de las tablas~~ — **resuelto** por
+   la pieza "RLS completo + login en Alumnos/Pagos/Asistencia" (ver
+   "Estado actual" arriba): las 15 tablas que faltaban ya tienen RLS
+   activo, con `perfiles` que ya lo tenía desde antes. Sigue pendiente la
+   verificación con sesiones reales — ver el punto 0 de arriba.
 2. Extender el patrón de Alumnos/Calificaciones a Pagos/colegiaturas y
    Listas/asistencia cuando el módulo de Alumnos quede validado con más
    uso real. El punto de patrón que estaba pendiente de decidir ya quedó
