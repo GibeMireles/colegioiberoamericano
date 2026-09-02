@@ -156,4 +156,22 @@ corren con los privilegios de quien las creó (no del usuario que dispara la
 política), consultan `perfiles`/`asignaciones`/`ciclos_escolares` sin
 volver a evaluar el RLS de esas tablas.
 
-*(Aprobado por el usuario — siguiente: matriz de políticas por tabla.)*
+*(Aprobado por el usuario.)*
+
+## B. Matriz de políticas por tabla
+
+| Tabla | SELECT | INSERT/UPDATE/DELETE |
+|---|---|---|
+| `configuracion` | pública (anon + autenticado) — la necesita `/login` antes de iniciar sesión | `super_admin` |
+| `ciclos_escolares`, `niveles`, `grados`, `grupos` | cualquier usuario autenticado | `super_admin`/`direccion` |
+| `materias` | cualquier usuario autenticado (nombres de materia no son sensibles) | `super_admin`/`direccion` |
+| `alumnos` | `super_admin`/`direccion`/`caja` (todos), `docente` (solo alumnos de sus grupos vía `inscripciones`) | `super_admin`/`direccion` |
+| `inscripciones` | `super_admin`/`direccion`/`caja` (todas), `docente` (`docente_tiene_grupo(grupo_id)`) | `super_admin`/`direccion` |
+| `asignaciones` | `super_admin`/`direccion` (todas), `docente` (`docente_perfil_id = mi_perfil_id()`) | `super_admin`/`direccion` |
+| `materia_alumnos` | `super_admin`/`direccion` (todas), `docente` (`docente_tiene_materia(materia_id)`) | `super_admin`/`direccion` |
+| `calificaciones` | `super_admin`/`direccion` (todas), `docente` (`docente_tiene_asignacion(asignacion_id)`) | igual para INSERT/UPDATE; DELETE solo `super_admin` (no hay función de borrado en la app hoy, es solo red de seguridad) |
+| `conceptos_pago`, `cargos`, `pagos` | `super_admin`/`direccion`/`caja` | `super_admin`/`direccion`/`caja` |
+| `asistencias` | `super_admin`/`direccion`/`docente` (`docente_tiene_grupo(grupo_id)`) | igual; DELETE solo `super_admin`/`direccion` |
+| `perfiles` | ya existe: cada quien su fila + `super_admin` todas → **se cambia a `es_super_admin_o_direccion()`** (corrige el bug real) | sin cambios (los inserts/updates pasan por `service_role` en la Server Action de invitar maestro) |
+
+*(Aprobado por el usuario — siguiente: login/UI en Alumnos, Pagos y Asistencia.)*
