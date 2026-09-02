@@ -11,6 +11,11 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Pagos", href: "/pagos" },
   { label: "Listas / Asistencia", href: "/asistencia" },
   { label: "Materias", href: "/materias", rolesPermitidos: ["super_admin", "direccion"] },
+  {
+    label: "Calificaciones",
+    href: "/calificaciones",
+    rolesPermitidos: ["super_admin", "direccion", "docente"],
+  },
   { label: "Usuarios", href: "/usuarios", rolesPermitidos: ["super_admin"] },
 ];
 

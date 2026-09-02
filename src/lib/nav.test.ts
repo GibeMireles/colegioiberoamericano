@@ -2,17 +2,23 @@ import { describe, expect, it } from "vitest";
 import { isNavItemActive, NAV_ITEMS, navItemsVisibles } from "./nav";
 
 describe("NAV_ITEMS", () => {
-  it("has the 5 modules in order, con Materias y Usuarios restringidos", () => {
+  it("has the 6 modules in order, con Materias, Calificaciones y Usuarios restringidos", () => {
     expect(NAV_ITEMS.map((item) => item.href)).toEqual([
       "/alumnos",
       "/pagos",
       "/asistencia",
       "/materias",
+      "/calificaciones",
       "/usuarios",
     ]);
     expect(NAV_ITEMS.find((item) => item.href === "/materias")?.rolesPermitidos).toEqual([
       "super_admin",
       "direccion",
+    ]);
+    expect(NAV_ITEMS.find((item) => item.href === "/calificaciones")?.rolesPermitidos).toEqual([
+      "super_admin",
+      "direccion",
+      "docente",
     ]);
     expect(NAV_ITEMS.find((item) => item.href === "/usuarios")?.rolesPermitidos).toEqual([
       "super_admin",
@@ -44,21 +50,24 @@ describe("navItemsVisibles", () => {
     expect(hrefs).toEqual(["/alumnos", "/pagos", "/asistencia"]);
   });
 
-  it("excludes materias and usuarios for docente", () => {
+  it("excludes materias y usuarios for docente, but includes calificaciones", () => {
     const hrefs = navItemsVisibles("docente").map((item) => item.href);
     expect(hrefs).not.toContain("/materias");
     expect(hrefs).not.toContain("/usuarios");
+    expect(hrefs).toContain("/calificaciones");
   });
 
-  it("includes materias but not usuarios for direccion", () => {
+  it("includes materias y calificaciones but not usuarios for direccion", () => {
     const hrefs = navItemsVisibles("direccion").map((item) => item.href);
     expect(hrefs).toContain("/materias");
+    expect(hrefs).toContain("/calificaciones");
     expect(hrefs).not.toContain("/usuarios");
   });
 
-  it("includes materias and usuarios for super_admin", () => {
+  it("includes materias, calificaciones y usuarios for super_admin", () => {
     const hrefs = navItemsVisibles("super_admin").map((item) => item.href);
     expect(hrefs).toContain("/materias");
+    expect(hrefs).toContain("/calificaciones");
     expect(hrefs).toContain("/usuarios");
   });
 });
