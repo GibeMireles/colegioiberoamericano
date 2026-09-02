@@ -1,4 +1,8 @@
-export default function AsistenciaPage() {
+import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
+
+export default async function AsistenciaPage() {
+  await requerirRolPagina(["super_admin", "direccion", "docente"]);
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-zinc-900">
