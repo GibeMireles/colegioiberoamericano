@@ -429,8 +429,11 @@ antes). Dos huecos reales de configuración local encontrados y
 corregidos en `.env.local` (nunca estuvieron en el repo, son
 gitignored — cualquiera que clone el proyecto necesita agregarlos a
 mano):
-- `NEXT_PUBLIC_SITE_URL` (ej. `http://localhost:3000`) — sin esto,
-  `obtenerSiteUrl()` truena al construir el enlace mágico de login.
+- `SITE_URL` (ej. `http://localhost:3000`; deliberadamente sin el
+  prefijo `NEXT_PUBLIC_` — solo se lee del lado del servidor en
+  `obtenerSiteUrl()`, así que Vercel la deja guardar como variable
+  privada sin advertencia) — sin esto, `obtenerSiteUrl()` truena al
+  construir el enlace mágico de login.
 - `SUPABASE_SERVICE_ROLE_KEY` — sin esto, `createAdminClient()` truena
   al invitar un maestro (`/usuarios`).
 
