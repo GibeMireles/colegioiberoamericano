@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { invitarMaestroSchema } from "@/lib/usuarios/schema";
+import { invitarUsuarioSchema } from "@/lib/usuarios/schema";
+import { ETIQUETAS_ROL, ROLES } from "@/lib/roles";
 
-type Errores = { correo?: string; nombre_completo?: string };
+type Errores = { correo?: string; nombre_completo?: string; rol?: string };
 
-export function InvitarMaestroForm({
+export function InvitarUsuarioForm({
   action,
 }: {
   action: (formData: FormData) => void;
@@ -14,9 +15,10 @@ export function InvitarMaestroForm({
 
   function manejarEnvio(evento: FormEvent<HTMLFormElement>) {
     const formData = new FormData(evento.currentTarget);
-    const resultado = invitarMaestroSchema.safeParse({
+    const resultado = invitarUsuarioSchema.safeParse({
       correo: formData.get("correo") ?? undefined,
       nombre_completo: formData.get("nombre_completo") ?? undefined,
+      rol: formData.get("rol") ?? undefined,
     });
 
     if (!resultado.success) {
@@ -70,11 +72,29 @@ export function InvitarMaestroForm({
           <p className="mt-1 text-sm text-red-600">{errores.correo}</p>
         )}
       </div>
+      <div>
+        <label htmlFor="rol" className="block text-sm font-medium text-zinc-700">
+          Rol
+        </label>
+        <select
+          id="rol"
+          name="rol"
+          defaultValue="docente"
+          className="mt-1 block w-40 rounded-md border border-zinc-300 px-3 py-2"
+        >
+          {ROLES.map((rol) => (
+            <option key={rol} value={rol}>
+              {ETIQUETAS_ROL[rol]}
+            </option>
+          ))}
+        </select>
+        {errores.rol && <p className="mt-1 text-sm text-red-600">{errores.rol}</p>}
+      </div>
       <button
         type="submit"
         className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
       >
-        Invitar maestro
+        Invitar usuario
       </button>
     </form>
   );

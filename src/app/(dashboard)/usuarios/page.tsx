@@ -1,18 +1,11 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerPerfilActual } from "@/lib/perfiles/actual";
-import { InvitarMaestroForm } from "@/components/usuarios/InvitarMaestroForm";
-import type { Rol } from "@/lib/roles";
-import { invitarDocente } from "./actions";
+import { InvitarUsuarioForm } from "@/components/usuarios/InvitarUsuarioForm";
+import { ETIQUETAS_ROL, type Rol } from "@/lib/roles";
+import { invitarUsuario } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const ETIQUETAS_ROL: Record<Rol, string> = {
-  super_admin: "Super admin",
-  direccion: "Dirección",
-  caja: "Caja",
-  docente: "Docente",
-};
 
 interface PerfilListado {
   id: string;
@@ -50,7 +43,7 @@ export default async function UsuariosPage() {
       <h1 className="text-2xl font-semibold text-zinc-900">Usuarios</h1>
 
       <div className="mt-6">
-        <InvitarMaestroForm action={invitarDocente} />
+        <InvitarUsuarioForm action={invitarUsuario} />
       </div>
 
       <table className="mt-8 w-full text-left text-sm">

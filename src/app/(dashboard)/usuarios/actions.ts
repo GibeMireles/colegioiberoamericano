@@ -3,19 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { obtenerPerfilActual } from "@/lib/perfiles/actual";
-import { invitarMaestroSchema } from "@/lib/usuarios/schema";
+import { invitarUsuarioSchema } from "@/lib/usuarios/schema";
 import { obtenerSiteUrl } from "@/lib/site-url";
 
-export async function invitarDocente(formData: FormData) {
+export async function invitarUsuario(formData: FormData) {
   const perfilActual = await obtenerPerfilActual();
 
   if (!perfilActual || perfilActual.rol !== "super_admin") {
-    throw new Error("No tienes permiso para invitar maestros.");
+    throw new Error("No tienes permiso para invitar usuarios.");
   }
 
-  const { correo, nombre_completo } = invitarMaestroSchema.parse({
+  const { correo, nombre_completo, rol } = invitarUsuarioSchema.parse({
     correo: formData.get("correo") ?? undefined,
     nombre_completo: formData.get("nombre_completo") ?? undefined,
+    rol: formData.get("rol") ?? undefined,
   });
 
   const admin = createAdminClient();
@@ -30,14 +31,14 @@ export async function invitarDocente(formData: FormData) {
 
   if (errorInvitacion || !data.user) {
     throw new Error(
-      `No se pudo invitar al maestro: ${errorInvitacion?.message ?? "correo ya registrado"}`
+      `No se pudo invitar al usuario: ${errorInvitacion?.message ?? "correo ya registrado"}`
     );
   }
 
   const { error: errorPerfil } = await admin.from("perfiles").insert({
     usuario_auth_id: data.user.id,
     nombre_completo,
-    rol: "docente",
+    rol,
   });
 
   if (errorPerfil) {
@@ -47,7 +48,7 @@ export async function invitarDocente(formData: FormData) {
         `No se pudo limpiar el usuario de auth tras un error de perfil: ${errorLimpieza.message}`
       );
     }
-    throw new Error(`No se pudo crear el perfil del maestro: ${errorPerfil.message}`);
+    throw new Error(`No se pudo crear el perfil del usuario: ${errorPerfil.message}`);
   }
 
   revalidatePath("/usuarios");
