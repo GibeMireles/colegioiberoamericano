@@ -12,6 +12,8 @@ export interface FilaCaptura {
 }
 
 const CAMPO_CLASE = "w-20 rounded-md border border-zinc-300 px-1 py-0.5 text-sm";
+const CAMPO_CLASE_DESHABILITADO =
+  "w-20 rounded-md border border-zinc-200 bg-zinc-100 px-1 py-0.5 text-sm text-zinc-500";
 
 export function TablaCaptura({
   filas,
@@ -19,15 +21,21 @@ export function TablaCaptura({
   parcial1Max,
   parcial2Max,
   productoMax,
+  soloLectura = false,
 }: {
   filas: FilaCaptura[];
   accionGuardar: (formData: FormData) => void | Promise<void>;
   parcial1Max: number;
   parcial2Max: number;
   productoMax: number;
+  soloLectura?: boolean;
 }) {
+  const Wrapper = soloLectura ? "div" : "form";
+  const wrapperProps = soloLectura ? {} : { action: accionGuardar };
+  const minimoAprobatorio = (parcial1Max + parcial2Max + productoMax) * 0.7;
+
   return (
-    <form action={accionGuardar} className="mt-6 overflow-x-auto">
+    <Wrapper {...wrapperProps} className="mt-6 overflow-x-auto">
       <table className="min-w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-zinc-200 text-left text-xs font-medium text-zinc-500">
@@ -50,6 +58,19 @@ export function TablaCaptura({
             const calif2 = calcularSubtotal(fila.parcial2_adas, fila.parcial2_examen);
             const subtotalProducto = calcularSubtotal(fila.producto_proyecto, fila.producto_examen);
             const total = calcularTotal(fila);
+            const claseCampo = soloLectura ? CAMPO_CLASE_DESHABILITADO : CAMPO_CLASE;
+            const tieneCaptura =
+              fila.parcial1_adas !== null ||
+              fila.parcial1_examen !== null ||
+              fila.parcial2_adas !== null ||
+              fila.parcial2_examen !== null ||
+              fila.producto_proyecto !== null ||
+              fila.producto_examen !== null;
+            const claseTotal = !tieneCaptura
+              ? "text-zinc-900"
+              : total >= minimoAprobatorio
+                ? "text-green-700"
+                : "text-red-700";
 
             return (
               <tr key={fila.alumnoId} className="border-b border-zinc-100">
@@ -61,7 +82,8 @@ export function TablaCaptura({
                     min="0"
                     name={`parcial1_adas-${fila.alumnoId}`}
                     defaultValue={fila.parcial1_adas ?? ""}
-                    className={CAMPO_CLASE}
+                    disabled={soloLectura}
+                    className={claseCampo}
                   />
                 </td>
                 <td className="p-2">
@@ -71,7 +93,8 @@ export function TablaCaptura({
                     min="0"
                     name={`parcial1_examen-${fila.alumnoId}`}
                     defaultValue={fila.parcial1_examen ?? ""}
-                    className={CAMPO_CLASE}
+                    disabled={soloLectura}
+                    className={claseCampo}
                   />
                 </td>
                 <td className="p-2 text-zinc-600">{calif1}</td>
@@ -82,7 +105,8 @@ export function TablaCaptura({
                     min="0"
                     name={`parcial2_adas-${fila.alumnoId}`}
                     defaultValue={fila.parcial2_adas ?? ""}
-                    className={CAMPO_CLASE}
+                    disabled={soloLectura}
+                    className={claseCampo}
                   />
                 </td>
                 <td className="p-2">
@@ -92,7 +116,8 @@ export function TablaCaptura({
                     min="0"
                     name={`parcial2_examen-${fila.alumnoId}`}
                     defaultValue={fila.parcial2_examen ?? ""}
-                    className={CAMPO_CLASE}
+                    disabled={soloLectura}
+                    className={claseCampo}
                   />
                 </td>
                 <td className="p-2 text-zinc-600">{calif2}</td>
@@ -103,7 +128,8 @@ export function TablaCaptura({
                     min="0"
                     name={`producto_proyecto-${fila.alumnoId}`}
                     defaultValue={fila.producto_proyecto ?? ""}
-                    className={CAMPO_CLASE}
+                    disabled={soloLectura}
+                    className={claseCampo}
                   />
                 </td>
                 <td className="p-2">
@@ -113,22 +139,25 @@ export function TablaCaptura({
                     min="0"
                     name={`producto_examen-${fila.alumnoId}`}
                     defaultValue={fila.producto_examen ?? ""}
-                    className={CAMPO_CLASE}
+                    disabled={soloLectura}
+                    className={claseCampo}
                   />
                 </td>
                 <td className="p-2 text-zinc-600">{subtotalProducto}</td>
-                <td className="p-2 font-semibold text-zinc-900">{total}</td>
+                <td className={`p-2 font-semibold ${claseTotal}`}>{total}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <button
-        type="submit"
-        className="mt-4 rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-      >
-        Guardar calificaciones
-      </button>
-    </form>
+      {!soloLectura && (
+        <button
+          type="submit"
+          className="mt-4 rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+        >
+          Guardar calificaciones
+        </button>
+      )}
+    </Wrapper>
   );
 }

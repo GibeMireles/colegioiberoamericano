@@ -341,47 +341,83 @@ Calificaciones (Autenticación + rol Docente, Materias + asignación,
 Captura de calificaciones) quedan completas.** Ya no queda ninguna
 sub-pieza de Calificaciones pendiente de diseñar ni implementar.
 
-0. **Verificar a mano, con las 4 cuentas reales, en el navegador — dos
-   cosas pendientes que conviene hacer en la misma sesión de pruebas,
-   porque las dos requieren la misma sesión autenticada real:**
+**Verificación en vivo hecha hoy (sesión posterior a la implementación):**
+se probó Captura de calificaciones de verdad, con un login real de
+`super_admin` en `http://localhost:3000` (no solo por SQL/código como
+antes). Dos huecos reales de configuración local encontrados y
+corregidos en `.env.local` (nunca estuvieron en el repo, son
+gitignored — cualquiera que clone el proyecto necesita agregarlos a
+mano):
+- `NEXT_PUBLIC_SITE_URL` (ej. `http://localhost:3000`) — sin esto,
+  `obtenerSiteUrl()` truena al construir el enlace mágico de login.
+- `SUPABASE_SERVICE_ROLE_KEY` — sin esto, `createAdminClient()` truena
+  al invitar un maestro (`/usuarios`).
+
+También se encontró que el correo integrado de Supabase (el que usa el
+proyecto hoy, sin SMTP propio) tiene un límite muy bajo de envíos
+(parece ~2 por hora) — bloqueó tanto reenviar el enlace de login como
+invitar a un segundo maestro en la misma sesión de pruebas. Antes de
+que el colegio dependa de esto para invitar maestros o resetear accesos
+seguido, hay que configurar un proveedor SMTP real (ej. Resend, capa
+gratuita) en el panel de Supabase — el correo integrado nunca es apto
+para producción.
+
+A partir de esa prueba en vivo, Captura de calificaciones ganó dos
+mejoras pedidas por el usuario probándolo:
+- Al guardar (parcial o completo), se muestra "✓ Se han guardado las
+  calificaciones." y la tabla pasa a solo lectura (campos
+  deshabilitados) — con un botón "Editar calificaciones" para volver a
+  habilitarla. Implementado con un query param (`?editar=1`,
+  `?guardado=1`), mismo patrón que `?ver=todos` en Alumnos — sin
+  componente de cliente nuevo.
+- La columna Total se pinta verde/rojo según si llega al 70% del total
+  posible **de esa asignación específica** (`(parcial1_max + parcial2_max
+  + producto_max) * 0.7`, no un 70 fijo — sigue siendo correcto aunque
+  un maestro no use 30/30/40=100).
+
+**Ideas para el futuro, documentadas para no perderlas (ninguna
+diseñada ni con spec todavía):**
+- **Boletas de calificaciones al tutor.** Una vez cerrado un corte
+  (parcial o el ciclo), poder mandarle al tutor de cada alumno su
+  boleta de calificaciones. Dirección decide cuándo se manda — implica
+  tener una fecha límite para que las calificaciones ya estén
+  capturadas antes de generar/enviar boletas. Sin diseñar: qué formato
+  tiene la boleta, cómo se dispara el envío (¿botón manual de
+  Dirección, o una fecha programada?), y por qué canal (¿correo?).
+- **Gestión de ciclos escolares.** Hoy solo hay un ciclo escolar
+  sembrado (`2026-2027`) y nada de UI para manejar el paso de un ciclo
+  a otro. Falta diseñar cómo Coordinación Académica maneja el cierre de
+  un ciclo y la apertura del siguiente sin que materias/asignaciones se
+  acumulen entre ciclos: archivar el ciclo que termina, generar el
+  ciclo nuevo, decidir qué pasa con cada alumno (continúa y sube de
+  grado/grupo, no continúa/egresa, o es alumno nuevo que se inscribe
+  por primera vez), y qué pasa con las materias/asignaciones de
+  maestros de un ciclo a otro (¿se vuelven a dar de alta cada ciclo, o
+  se copian del ciclo anterior como punto de partida?). Esto afecta a
+  Alumnos, Materias y Calificaciones por igual — es una pieza
+  transversal, no de un solo módulo.
+
+0. **Verificar a mano, con las 4 cuentas reales, la parte de seguridad
+   que sigue pendiente:**
    - **(Seguridad, prioridad alta) Verificación real de RLS por rol.**
      Ninguna política de RLS de la pieza "RLS completo + login en
      Alumnos/Pagos/Asistencia" (ver "Estado actual" arriba) se probó
-     contra una sesión real — solo se trazó código contra la matriz del
-     spec, porque este sandbox no puede simular un login real ni usar el
-     MCP de Supabase para esto (corre con privilegios de servicio, ignora
-     RLS siempre). Antes de exponer la plataforma fuera de la red del
-     colegio hay que entrar de verdad con las 4 cuentas
-     (`super_admin`/`direccion`/`caja`/`docente`) y confirmar que cada
-     una ve exactamente lo que la matriz dice y nada más — en particular
-     que un `docente` NO puede ver alumnos fuera de sus grupos ni entrar
-     a Pagos, y que `caja` no puede entrar a Asistencia. Esto es un
-     control de seguridad real, no un asunto de UX — tiene más peso que
-     el punto de abajo.
-   - **(UX, prioridad menor) Verificar Captura de calificaciones a mano
-     en el navegador** antes de que la escuela dependa de esta pantalla
-     para clases reales. Toda la lógica de datos y de validación se
-     probó a fondo con trazas SQL y revisión de código (ver "Estado
-     actual" arriba), pero nada del render real (formulario, mensajes de
-     error en pantalla, `required` de HTML5) se observó visualmente —
-     este sandbox no tiene salida de red hacia Supabase desde `npm run
-     dev`, así que `/login` no carga aquí. Hacerlo con un docente real y
-     con super_admin/dirección antes de dar la pieza por completamente
-     cerrada.
+     contra una sesión de `docente`/`caja`/`direccion` real — la prueba
+     de hoy solo cubrió `super_admin`. Falta confirmar que un `docente`
+     NO puede ver alumnos fuera de sus grupos ni entrar a Pagos, y que
+     `caja` no puede entrar a Asistencia. Esto es un control de
+     seguridad real, no un asunto de UX.
 1. ~~Configurar RLS por rol en el resto de las tablas~~ — **resuelto** por
    la pieza "RLS completo + login en Alumnos/Pagos/Asistencia" (ver
    "Estado actual" arriba): las 15 tablas que faltaban ya tienen RLS
    activo, con `perfiles` que ya lo tenía desde antes. Sigue pendiente la
-   verificación con sesiones reales — ver el punto 0 de arriba.
-2. Extender el patrón de Alumnos/Calificaciones a Pagos/colegiaturas y
-   Listas/asistencia cuando el módulo de Alumnos quede validado con más
-   uso real. El punto de patrón que estaba pendiente de decidir ya quedó
-   resuelto: las Server Actions de escritura reciben el id del padre
-   relevante como parámetro explícito (`crearAlumno(grupoId, ...)`,
-   `crearGrupo(gradoId, ...)`, etc.) — Pagos/Asistencia deberían seguir
-   el mismo patrón (ej. Server Actions de pagos recibiendo
-   `alumnoId`/`cargoId` explícito, no leyendo de variables de entorno
-   ni asumiendo un contexto implícito).
+   verificación con sesiones reales de `docente`/`caja`/`direccion` — ver
+   el punto 0 de arriba.
+2. ~~Extender el patrón de Alumnos/Calificaciones a Listas/asistencia~~ —
+   en progreso, ver la pieza de Asistencia más abajo si ya existe.
+   Pagos/colegiaturas sigue sin construirse. El patrón de Server Actions
+   con el id del padre explícito (`crearAlumno(grupoId, ...)`, etc.) ya
+   está validado con varios módulos — Pagos debería seguirlo igual.
 
 ## Cómo retomar esta sesión
 

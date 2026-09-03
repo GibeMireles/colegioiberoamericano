@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requerirAccesoAsignacion } from "@/lib/asignaciones/requerirAccesoAsignacion";
 import { obtenerAlumnosDeAsignacion } from "@/lib/calificaciones/roster";
@@ -114,4 +115,5 @@ export async function guardarCalificaciones(asignacionId: string, formData: Form
   }
 
   revalidatePath(`/calificaciones/${asignacionId}`);
+  redirect(`/calificaciones/${asignacionId}?guardado=1`);
 }

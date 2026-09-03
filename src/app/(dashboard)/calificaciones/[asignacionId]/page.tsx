@@ -34,7 +34,12 @@ async function obtenerContexto(materiaId: string, grupoId: string): Promise<Cont
   };
 }
 
-async function obtenerFilasCaptura(asignacionId: string): Promise<FilaCaptura[]> {
+interface FilasCaptura {
+  filas: FilaCaptura[];
+  hayGuardadas: boolean;
+}
+
+async function obtenerFilasCaptura(asignacionId: string): Promise<FilasCaptura> {
   const alumnos = await obtenerAlumnosDeAsignacion(asignacionId);
   const supabase = await createClient();
 
@@ -51,7 +56,7 @@ async function obtenerFilasCaptura(asignacionId: string): Promise<FilaCaptura[]>
 
   const porAlumno = new Map((calificaciones ?? []).map((fila) => [fila.alumno_id, fila]));
 
-  return alumnos
+  const filas = alumnos
     .map((alumno) => {
       const apellidos = [alumno.apellido_paterno, alumno.apellido_materno]
         .filter((valor): valor is string => Boolean(valor))
@@ -70,14 +75,19 @@ async function obtenerFilasCaptura(asignacionId: string): Promise<FilaCaptura[]>
       };
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+
+  return { filas, hayGuardadas: (calificaciones ?? []).length > 0 };
 }
 
 export default async function CalificacionesAsignacionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ asignacionId: string }>;
+  searchParams: Promise<{ editar?: string; guardado?: string }>;
 }) {
   const { asignacionId } = await params;
+  const { editar, guardado } = await searchParams;
   const asignacion = await requerirAccesoAsignacionPagina(asignacionId);
   const contexto = await obtenerContexto(asignacion.materia_id, asignacion.grupo_id);
 
@@ -86,13 +96,23 @@ export default async function CalificacionesAsignacionPage({
     asignacion.parcial2_max !== null &&
     asignacion.producto_max !== null;
 
-  const filas = ponderacionDefinida ? await obtenerFilasCaptura(asignacionId) : [];
+  const { filas, hayGuardadas } = ponderacionDefinida
+    ? await obtenerFilasCaptura(asignacionId)
+    : { filas: [], hayGuardadas: false };
+
+  const soloLectura = hayGuardadas && editar !== "1";
 
   return (
     <div>
       <h1 className="text-2xl font-semibold text-zinc-900">
         {contexto.materiaNombre} — {contexto.gradoNombre}, Grupo {contexto.grupoNombre}
       </h1>
+
+      {guardado === "1" && (
+        <p className="mt-4 rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-800">
+          ✓ Se han guardado las calificaciones.
+        </p>
+      )}
 
       <div className="mt-6 max-w-sm">
         <h2 className="text-lg font-semibold text-zinc-900">
@@ -157,13 +177,24 @@ export default async function CalificacionesAsignacionPage({
       {!ponderacionDefinida ? null : filas.length === 0 ? (
         <p className="mt-6 text-zinc-600">Este grupo todavía no tiene alumnos.</p>
       ) : (
-        <TablaCaptura
-          filas={filas}
-          accionGuardar={guardarCalificaciones.bind(null, asignacionId)}
-          parcial1Max={asignacion.parcial1_max!}
-          parcial2Max={asignacion.parcial2_max!}
-          productoMax={asignacion.producto_max!}
-        />
+        <>
+          {soloLectura && (
+            <a
+              href={`/calificaciones/${asignacionId}?editar=1`}
+              className="mt-6 inline-block text-sm font-medium text-primario hover:underline"
+            >
+              Editar calificaciones
+            </a>
+          )}
+          <TablaCaptura
+            filas={filas}
+            accionGuardar={guardarCalificaciones.bind(null, asignacionId)}
+            parcial1Max={asignacion.parcial1_max!}
+            parcial2Max={asignacion.parcial2_max!}
+            productoMax={asignacion.producto_max!}
+            soloLectura={soloLectura}
+          />
+        </>
       )}
     </div>
   );
