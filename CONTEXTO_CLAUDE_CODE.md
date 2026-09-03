@@ -363,6 +363,36 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   punto 0 de "Próximos pasos pendientes": las políticas de `docente` de
   Asistencia quedan incluidas en esa misma verificación pendiente, no es
   un pendiente nuevo separado).
+  **Corrección en la revisión final del branch completo:** el reporte
+  por grupo (`obtenerAlumnosDelGrupo` en
+  `asistencia/reporte/grupo/[grupoId]/page.tsx`) filtraba el roster de
+  alumnos solo por `grupo_id`, sin acotar por ciclo escolar activo —
+  a diferencia de `obtenerMateriasDelGrupo` en el mismo archivo, que sí
+  filtra por ambos. En cuanto exista un segundo ciclo escolar, esto
+  habría mostrado alumnos de ciclos anteriores como filas extra (todas
+  en "—") y, si un alumno se reinscribe al mismo grupo en dos ciclos,
+  una `key` de React duplicada. Corregido agregando el mismo filtro por
+  `ciclo_escolar_id` que ya usa la función vecina.
+  **Pendientes menores identificados en esa misma revisión, no
+  bloqueantes, para una futura pasada de limpieza:** (a) el reporte
+  ignora `materia_alumnos` (lista propia) — para una materia con lista
+  propia (ej. niveles de inglés), un alumno del grupo que no está en esa
+  lista siempre muestra "—", igual que un alumno que sí está en la lista
+  pero cuyo maestro no ha pasado lista todavía; Coordinación no puede
+  distinguir ambos casos hoy; (b) `fechaDeHoy()` está duplicada en dos
+  archivos (`[asignacionId]/page.tsx` y `reporte/grupo/[grupoId]/page.tsx`)
+  y usa UTC (`new Date().toISOString()`), no la zona horaria de la
+  escuela — en un servidor UTC, después de las 18:00 hora de Ciudad de
+  México el selector de fecha por defecto muestra "mañana"; (c) el
+  parámetro `?fecha=` no se valida contra un formato `YYYY-MM-DD` antes
+  de usarse en la consulta, así que un valor mal formado deja ver un
+  error crudo de Postgres; (d) los 4 valores de `estatus` están
+  repetidos en 4 lugares (`schema.ts`, `TablaAsistencia.tsx` dos veces,
+  el reporte) sin una fuente única — agregar un quinto estatus algún día
+  requeriría editar los 4 sin que TypeScript avise de un olvido; (e) la
+  página hoja del reporte (`reporte/grupo/[grupoId]`) no tiene breadcrumb
+  de regreso, a diferencia de sus páginas padre y de la página
+  equivalente en Materias.
 
 ## Alcance del MVP — 3 módulos
 

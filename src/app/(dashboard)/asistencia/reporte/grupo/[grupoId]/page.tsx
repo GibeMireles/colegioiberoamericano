@@ -19,13 +19,14 @@ function fechaDeHoy(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function obtenerAlumnosDelGrupo(grupoId: string): Promise<AlumnoSimple[]> {
+async function obtenerAlumnosDelGrupo(grupoId: string, cicloId: string): Promise<AlumnoSimple[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("inscripciones")
     .select("alumnos(id, nombres, apellido_paterno, apellido_materno)")
-    .eq("grupo_id", grupoId);
+    .eq("grupo_id", grupoId)
+    .eq("ciclo_escolar_id", cicloId);
 
   if (error) {
     throw new Error(`No se pudo cargar la lista de alumnos: ${error.message}`);
@@ -135,7 +136,7 @@ export default async function ReporteGrupoPage({
   }
 
   const [alumnos, materias] = await Promise.all([
-    obtenerAlumnosDelGrupo(grupoId),
+    obtenerAlumnosDelGrupo(grupoId, cicloId),
     obtenerMateriasDelGrupo(grupoId, cicloId),
   ]);
 
