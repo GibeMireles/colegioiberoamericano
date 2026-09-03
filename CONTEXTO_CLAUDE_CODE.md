@@ -312,6 +312,55 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   UX/mensajes de error): aquí lo que no se probó de verdad es un control
   de seguridad — quién puede ver y escribir qué datos. Queda como
   pendiente explícito y prioritario, ver "Próximos pasos pendientes".
+- **Listas / Asistencia** — ver
+  `docs/superpowers/specs/2026-09-03-asistencia-design.md` y
+  `docs/superpowers/plans/2026-09-03-asistencia.md`. Tercer módulo del
+  MVP con funcionalidad real (junto a Alumnos y Calificaciones). Migra
+  `asistencias` de scope por `grupo_id` a scope por `asignacion_id`
+  (mismo patrón que `calificaciones`), reutilizando
+  `docente_tiene_asignacion()` y `alumno_en_grupo_de_asignacion()` — con
+  la validación de roster incluida **desde el inicio** en las políticas
+  de escritura de docente, a diferencia de Calificaciones, que la agregó
+  después en su revisión final. Durante la verificación de la migración
+  se encontró un constraint `UNIQUE (alumno_id, fecha)` que preexistía
+  en el esquema original (de antes de que existiera el scope por
+  asignación) y que la migración no eliminaba — habría impedido que un
+  alumno tuviera asistencia registrada en más de una materia el mismo
+  día, justo lo contrario del propósito de esta pieza. Se corrigió
+  soltando ese constraint directamente contra el proyecto real,
+  confirmado y documentado en `database/schema.sql`.
+  Pantallas: `/asistencia/[asignacionId]` es la captura por maestro —
+  elige fecha (hoy por defecto), un estatus por alumno del roster de esa
+  asignación ("Presente" precargado por defecto), guarda. Al guardar se
+  bloquea la edición y se muestra "✓ Se ha guardado la asistencia.", con
+  botón "Editar asistencia" para reabrirla — mismo patrón `?editar=1`/
+  `?guardado=1` que Calificaciones, pero aquí el bloqueo es **independiente
+  por cada fecha** (cambiar de fecha no hereda el estado de bloqueo de
+  otra fecha), a diferencia de Calificaciones que solo tiene un bloqueo
+  global. `/asistencia` lista "Mis materias" para el docente, o todas las
+  asignaciones más un enlace "Reporte por grupo" para
+  `super_admin`/`direccion` (mismo patrón de supervisión que
+  Calificaciones). `/asistencia/reporte` (Nivel → Grado → Grupo, calcado
+  de la navegación de Materias) termina en una matriz de solo lectura
+  alumno × materia con el estatus capturado por cada maestro para una
+  fecha elegida — resume lo que Coordinación Académica necesita ver sin
+  tener una captura propia separada, para que nunca haya dos versiones
+  de la verdad.
+  Con esta pieza, **los 3 módulos del MVP (Alumnos, Calificaciones,
+  Asistencia) tienen funcionalidad real** — de lo originalmente
+  planteado solo falta Pagos/colegiaturas, que sigue sin construirse.
+  **Verificación:** test unitario del schema Zod (`estatus`), trazas SQL
+  en vivo contra el proyecto real de Supabase para el roster y las
+  consultas del reporte, y trazado de código de las rutas de escritura
+  (re-derivación de roster, validación RLS de roster) tanto por quien
+  implementó cada tarea como por su revisor independiente. Igual que
+  Calificaciones y la pieza de RLS completo antes que ella, **no** se
+  probó con una sesión real de navegador (`docente` ni `super_admin`)
+  contra esta pantalla específica — queda cubierto por el mismo
+  pendiente de verificación en vivo por rol que ya estaba abierto (ver
+  punto 0 de "Próximos pasos pendientes": las políticas de `docente` de
+  Asistencia quedan incluidas en esa misma verificación pendiente, no es
+  un pendiente nuevo separado).
 
 ## Alcance del MVP — 3 módulos
 
@@ -406,7 +455,10 @@ diseñada ni con spec todavía):**
      de hoy solo cubrió `super_admin`. Falta confirmar que un `docente`
      NO puede ver alumnos fuera de sus grupos ni entrar a Pagos, y que
      `caja` no puede entrar a Asistencia. Esto es un control de
-     seguridad real, no un asunto de UX.
+     seguridad real, no un asunto de UX. Las políticas de `docente` de
+     Listas/Asistencia (ver "Estado actual" arriba) quedan incluidas en
+     esta misma verificación pendiente — no es un pendiente nuevo
+     separado.
 1. ~~Configurar RLS por rol en el resto de las tablas~~ — **resuelto** por
    la pieza "RLS completo + login en Alumnos/Pagos/Asistencia" (ver
    "Estado actual" arriba): las 15 tablas que faltaban ya tienen RLS
@@ -414,10 +466,12 @@ diseñada ni con spec todavía):**
    verificación con sesiones reales de `docente`/`caja`/`direccion` — ver
    el punto 0 de arriba.
 2. ~~Extender el patrón de Alumnos/Calificaciones a Listas/asistencia~~ —
-   en progreso, ver la pieza de Asistencia más abajo si ya existe.
-   Pagos/colegiaturas sigue sin construirse. El patrón de Server Actions
-   con el id del padre explícito (`crearAlumno(grupoId, ...)`, etc.) ya
-   está validado con varios módulos — Pagos debería seguirlo igual.
+   **resuelto** por la pieza "Listas / Asistencia" (ver "Estado actual"
+   arriba). Pagos/colegiaturas sigue sin construirse — es lo único que
+   falta de los 3 módulos originalmente planteados para el MVP. El
+   patrón de Server Actions con el id del padre explícito
+   (`crearAlumno(grupoId, ...)`, etc.) ya está validado con varios
+   módulos — Pagos debería seguirlo igual.
 
 ## Cómo retomar esta sesión
 

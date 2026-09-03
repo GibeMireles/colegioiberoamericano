@@ -543,3 +543,65 @@ create policy "asistencias actualizacion docente propio grupo" on asistencias
     and docente_tiene_grupo(grupo_id)
     and alumno_en_grupo(grupo_id, alumno_id)
   );
+
+-- ==========================================================
+-- Asistencia: migrar de grupo_id a asignacion_id
+-- Prerequisites del plan de Listas/Asistencia (aplicada vía
+-- apply_migration antes del Task 1 de ese plan, por el orquestador, no
+-- por un subagente). Lleva a `asistencias` al mismo patrón por
+-- asignacion_id que ya tenía `calificaciones`, con la validación de
+-- roster incluida desde el inicio en las políticas de escritura de
+-- docente — a diferencia de calificaciones/asistencias arriba, que la
+-- agregaron después en una revisión final (Migración 3).
+-- ==========================================================
+
+-- 1. Soltar políticas existentes (referencian grupo_id)
+drop policy if exists "asistencias lectura admin" on asistencias;
+drop policy if exists "asistencias lectura docente propio grupo" on asistencias;
+drop policy if exists "asistencias escritura admin" on asistencias;
+drop policy if exists "asistencias escritura docente propio grupo insert" on asistencias;
+drop policy if exists "asistencias actualizacion admin" on asistencias;
+drop policy if exists "asistencias actualizacion docente propio grupo" on asistencias;
+drop policy if exists "asistencias borrado admin" on asistencias;
+
+-- 2. Redefinir columnas
+alter table asistencias drop column grupo_id;
+alter table asistencias add column asignacion_id uuid not null references asignaciones(id);
+alter table asistencias add constraint asistencias_estatus_check
+  check (estatus = any (array['presente', 'ausente', 'retardo', 'justificado']));
+create unique index idx_asistencias_unica on asistencias(asignacion_id, alumno_id, fecha);
+
+-- Corrección posterior (encontrada durante Task 2 de este plan): un
+-- constraint UNIQUE (alumno_id, fecha) preexistía en el esquema original
+-- de asistencias (de antes de que existiera el scope por asignación) y
+-- nunca fue eliminado por la migración de arriba. Esto habría impedido
+-- que un alumno tuviera asistencia registrada en más de una materia el
+-- mismo día — justo lo contrario del propósito de esta pieza.
+alter table asistencias drop constraint asistencias_alumno_id_fecha_key;
+
+-- 3. Recrear políticas scoped por asignacion_id (incluye validación de
+--    roster desde el inicio, a diferencia de calificaciones que la
+--    agregó después en una revisión final)
+create policy "asistencias lectura admin" on asistencias
+  for select using (es_super_admin_o_direccion());
+create policy "asistencias lectura docente propia asignacion" on asistencias
+  for select using (es_docente() and docente_tiene_asignacion(asignacion_id));
+create policy "asistencias escritura admin insert" on asistencias
+  for insert with check (es_super_admin_o_direccion());
+create policy "asistencias escritura docente propia asignacion insert" on asistencias
+  for insert with check (
+    es_docente()
+    and docente_tiene_asignacion(asignacion_id)
+    and alumno_en_grupo_de_asignacion(asignacion_id, alumno_id)
+  );
+create policy "asistencias actualizacion admin" on asistencias
+  for update using (es_super_admin_o_direccion()) with check (es_super_admin_o_direccion());
+create policy "asistencias actualizacion docente propia asignacion" on asistencias
+  for update using (es_docente() and docente_tiene_asignacion(asignacion_id))
+  with check (
+    es_docente()
+    and docente_tiene_asignacion(asignacion_id)
+    and alumno_en_grupo_de_asignacion(asignacion_id, alumno_id)
+  );
+create policy "asistencias borrado admin" on asistencias
+  for delete using (es_super_admin_o_direccion());
