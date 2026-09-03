@@ -393,6 +393,52 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   página hoja del reporte (`reporte/grupo/[grupoId]`) no tiene breadcrumb
   de regreso, a diferencia de sus páginas padre y de la página
   equivalente en Materias.
+- **Selector de rol al invitar usuarios.** `/usuarios` solo tenía un
+  botón "Invitar maestro" que daba de alta a cualquiera como `docente`,
+  sin importar quién fuera — no servía para invitar a Dirección o
+  Coordinación Académica con su rol real. `invitarDocente` se generalizó
+  a `invitarUsuario` (`src/app/(dashboard)/usuarios/actions.ts`),
+  `invitarMaestroSchema` a `invitarUsuarioSchema` (agrega `rol:
+  z.enum(ROLES)`), y el formulario (`InvitarUsuarioForm.tsx`, antes
+  `InvitarMaestroForm.tsx`) ganó un `<select>` con las 4 opciones,
+  precargado en "Docente" por ser el caso más común. `ETIQUETAS_ROL` se
+  movió de `page.tsx` a `src/lib/roles.ts` para reutilizarla en el
+  selector. Sin cambios en el gate de acceso (solo `super_admin` invita,
+  sin importar a qué rol).
+- **Primer despliegue a producción.** El sitio corre en Vercel
+  (`https://colegioiberoamericano.vercel.app`), conectado directo al
+  repo de GitHub — cada push a `main` despliega solo. La base de datos
+  sigue siendo el mismo proyecto de Supabase de siempre
+  (`elhgncefzpttarpaxbzm`), sin cambios. GitHub Pages se descartó
+  explícitamente: solo sirve archivos estáticos y esta app depende de
+  servidor en cada request (Server Actions, middleware de roles, login
+  con enlace mágico vía `/auth/callback`) — Next.js sí tiene un modo de
+  exportación estática, pero apagaría justo esas tres cosas.
+  Dos hallazgos reales durante el primer deploy:
+  - **Vercel bloqueaba guardar `NEXT_PUBLIC_SITE_URL`** con una
+    advertencia de que las variables `NEXT_PUBLIC_` se exponen al
+    navegador. Como esta variable solo se lee del lado del servidor
+    (`obtenerSiteUrl()`, usada únicamente desde Server Actions), no
+    tenía por qué llevar ese prefijo — se renombró a `SITE_URL` en el
+    código, `.env.example` y `.env.local` (ver el hallazgo de esta
+    variable más arriba, ya actualizado con el nombre nuevo).
+  - **"Vercel Authentication" (Deployment Protection) estaba activado
+    por default**, lo que exige sesión de Vercel para ver el sitio —
+    habría bloqueado a cualquiera del colegio sin cuenta ahí. Se
+    desactivó en Project Settings → Deployment Protection. En el plan
+    gratuito no se puede dejar solo para previews (esa excepción es de
+    pago), así que quedaron públicos tanto producción como previews —
+    aceptable para este proyecto, nadie más visita los previews.
+  También se agregó `https://colegioiberoamericano.vercel.app/auth/callback`
+  a Redirect URLs en Supabase (Authentication → URL Configuration), sin
+  quitar `http://localhost:3000` como Site URL — ambos entornos siguen
+  funcionando. **Primer login real en producción, verificado**
+  (`super_admin`, correo real, enlace mágico recibido y funcional).
+  El límite de envíos del mailer integrado de Supabase (ver hallazgo de
+  arriba) sigue sin resolverse — se confirmó en vivo durante esta prueba
+  (varios clics seguidos en "Enviar enlace" chocaron con un límite de
+  frecuencia de ~30-60 segundos entre solicitudes) — sigue pendiente
+  configurar SMTP real antes de invitar a varias personas el mismo día.
 
 ## Alcance del MVP — 3 módulos
 
