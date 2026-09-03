@@ -474,3 +474,72 @@ alter table conceptos_pago enable row level security;
 alter table cargos enable row level security;
 alter table pagos enable row level security;
 alter table asistencias enable row level security;
+
+-- ==========================================================
+-- RLS: validar roster en escrituras de docente (calificaciones/asistencias)
+-- Migración 3 de la historia de RLS (aplicada después de las dos de
+-- arriba). El review final detectó que las políticas de escritura de
+-- docente en calificaciones y asistencias validaban que el docente fuera
+-- dueño de la asignación/grupo, pero nunca validaban que alumno_id
+-- perteneciera al roster de esa asignación/grupo — un docente podía,
+-- vía llamada directa a la API saltándose la app de Next.js, escribir
+-- una calificación/asistencia para un alumno fuera de su clase. Estas
+-- funciones y políticas refuerzan esa validación.
+-- ==========================================================
+
+create or replace function alumno_en_grupo_de_asignacion(p_asignacion_id uuid, p_alumno_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from asignaciones a
+    join inscripciones i on i.grupo_id = a.grupo_id and i.ciclo_escolar_id = a.ciclo_escolar_id
+    where a.id = p_asignacion_id and i.alumno_id = p_alumno_id
+  );
+$$;
+
+create or replace function alumno_en_grupo(p_grupo_id uuid, p_alumno_id uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from inscripciones
+    where grupo_id = p_grupo_id and alumno_id = p_alumno_id
+  );
+$$;
+
+drop policy if exists "calificaciones escritura docente propia asignacion insert" on calificaciones;
+create policy "calificaciones escritura docente propia asignacion insert" on calificaciones
+  for insert with check (
+    es_docente()
+    and docente_tiene_asignacion(asignacion_id)
+    and alumno_en_grupo_de_asignacion(asignacion_id, alumno_id)
+  );
+
+drop policy if exists "calificaciones actualizacion docente propia asignacion" on calificaciones;
+create policy "calificaciones actualizacion docente propia asignacion" on calificaciones
+  for update using (es_docente() and docente_tiene_asignacion(asignacion_id))
+  with check (
+    es_docente()
+    and docente_tiene_asignacion(asignacion_id)
+    and alumno_en_grupo_de_asignacion(asignacion_id, alumno_id)
+  );
+
+drop policy if exists "asistencias escritura docente propio grupo insert" on asistencias;
+create policy "asistencias escritura docente propio grupo insert" on asistencias
+  for insert with check (
+    es_docente()
+    and docente_tiene_grupo(grupo_id)
+    and alumno_en_grupo(grupo_id, alumno_id)
+  );
+
+drop policy if exists "asistencias actualizacion docente propio grupo" on asistencias;
+create policy "asistencias actualizacion docente propio grupo" on asistencias
+  for update using (es_docente() and docente_tiene_grupo(grupo_id))
+  with check (
+    es_docente()
+    and docente_tiene_grupo(grupo_id)
+    and alumno_en_grupo(grupo_id, alumno_id)
+  );

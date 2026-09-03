@@ -237,7 +237,7 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   `ciclos_escolares`, `niveles`, `grados`, `grupos`, `materias`,
   `alumnos`, `inscripciones`, `asignaciones`, `materia_alumnos`,
   `calificaciones`, `conceptos_pago`, `cargos`, `pagos`, `asistencias`) —
-  `perfiles` ya lo tenía. 7 funciones helper nuevas (`es_direccion`,
+  `perfiles` ya lo tenía. 8 funciones helper nuevas (`es_direccion`,
   `es_super_admin_o_direccion`, `es_docente`, `es_caja`, `mi_perfil_id`,
   `docente_tiene_grupo`, `docente_tiene_materia`,
   `docente_tiene_asignacion`) extienden el mismo patrón `security
@@ -281,13 +281,23 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   equivalente por el revisor de cada tarea. `get_advisors` confirma que
   el advisory `rls_disabled` ya no aparece para ninguna tabla, y de paso
   reveló un WARN preexistente (no introducido por esta pieza, y no
-  corregido): las 8 funciones `security definer` (las 7 nuevas más
+  corregido): las 9 funciones `security definer` (las 8 nuevas más
   `es_super_admin()`) son invocables vía RPC de PostgREST por roles
   anónimo/autenticado — evaluado como bajo riesgo (son checks booleanos
   de "¿el que llama es X?"; un anónimo sin sesión solo recibe `false`,
   sin fuga de datos), mismo carácter que ya tenía `es_super_admin()`
   antes de esta pieza — queda señalado para que una persona lo decida,
   no se auto-corrigió.
+  **Corrección posterior (review final):** el review detectó que las
+  políticas de escritura de `docente` en `calificaciones` y
+  `asistencias` validaban que fuera dueño de la asignación/grupo, pero
+  nunca que `alumno_id` perteneciera al roster de esa asignación/grupo
+  — un docente podía, vía llamada directa a la API, escribir una
+  calificación/asistencia para un alumno fuera de su clase. Se corrigió
+  agregando esa validación de roster a las 4 políticas de escritura
+  (insert/update de ambas tablas), sumando 2 funciones `security
+  definer` más (`alumno_en_grupo_de_asignacion`, `alumno_en_grupo`) —
+  el total de funciones `security definer` en el proyecto sube a **11**.
   **Limitación de verificación, más seria aquí que en piezas
   anteriores:** ninguna política de RLS se pudo probar con una sesión
   real autenticada en este entorno — el login con enlace mágico requiere
