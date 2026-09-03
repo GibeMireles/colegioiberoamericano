@@ -571,14 +571,6 @@ alter table asistencias add constraint asistencias_estatus_check
   check (estatus = any (array['presente', 'ausente', 'retardo', 'justificado']));
 create unique index idx_asistencias_unica on asistencias(asignacion_id, alumno_id, fecha);
 
--- Corrección posterior (encontrada durante Task 2 de este plan): un
--- constraint UNIQUE (alumno_id, fecha) preexistía en el esquema original
--- de asistencias (de antes de que existiera el scope por asignación) y
--- nunca fue eliminado por la migración de arriba. Esto habría impedido
--- que un alumno tuviera asistencia registrada en más de una materia el
--- mismo día — justo lo contrario del propósito de esta pieza.
-alter table asistencias drop constraint asistencias_alumno_id_fecha_key;
-
 -- 3. Recrear políticas scoped por asignacion_id (incluye validación de
 --    roster desde el inicio, a diferencia de calificaciones que la
 --    agregó después en una revisión final)
@@ -605,3 +597,16 @@ create policy "asistencias actualizacion docente propia asignacion" on asistenci
   );
 create policy "asistencias borrado admin" on asistencias
   for delete using (es_super_admin_o_direccion());
+
+-- ==========================================================
+-- Asistencia: corrección posterior (encontrada durante Task 2 del plan)
+-- Un constraint UNIQUE (alumno_id, fecha) preexistía en el esquema
+-- original de asistencias (de antes de que existiera el scope por
+-- asignación, ver definición de la tabla arriba) y la migración de
+-- Prerequisites de arriba no lo eliminaba. Esto habría impedido que un
+-- alumno tuviera asistencia registrada en más de una materia el mismo
+-- día — justo lo contrario del propósito de esta pieza. Se soltó
+-- directamente contra el proyecto real, aplicada por separado y después
+-- de la migración de Prerequisites de arriba.
+-- ==========================================================
+alter table asistencias drop constraint asistencias_alumno_id_fecha_key;

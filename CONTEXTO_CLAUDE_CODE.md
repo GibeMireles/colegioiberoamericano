@@ -346,9 +346,11 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   fecha elegida — resume lo que Coordinación Académica necesita ver sin
   tener una captura propia separada, para que nunca haya dos versiones
   de la verdad.
-  Con esta pieza, **los 3 módulos del MVP (Alumnos, Calificaciones,
-  Asistencia) tienen funcionalidad real** — de lo originalmente
-  planteado solo falta Pagos/colegiaturas, que sigue sin construirse.
+  Con esta pieza, **2 de los 3 módulos originalmente planteados para el
+  MVP (Alumnos, Asistencia) tienen funcionalidad real, más Calificaciones
+  (construida como sistema adicional, fuera de los 3 originales)** — de
+  lo originalmente planteado solo falta Pagos/colegiaturas, que sigue
+  sin construirse.
   **Verificación:** test unitario del schema Zod (`estatus`), trazas SQL
   en vivo contra el proyecto real de Supabase para el roster y las
   consultas del reporte, y trazado de código de las rutas de escritura
