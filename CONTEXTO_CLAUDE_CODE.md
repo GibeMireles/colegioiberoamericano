@@ -439,6 +439,26 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   (varios clics seguidos en "Enviar enlace" chocaron con un límite de
   frecuencia de ~30-60 segundos entre solicitudes) — sigue pendiente
   configurar SMTP real antes de invitar a varias personas el mismo día.
+  El límite volvió a chocar minutos después al invitar a un segundo
+  correo real desde `/usuarios` en producción (`429: email rate limit
+  exceeded`, visto en los logs de Supabase) — y expuso un hallazgo
+  nuevo: cuando `invitarUsuario` truena por ese error, la Server Action
+  lo propaga como excepción y Next.js lo redacta en producción a un
+  mensaje genérico ("Algo salió mal / React error #441"), igual que el
+  pendiente ya conocido de Captura de calificaciones, ahora confirmado
+  también en el flujo de invitación.
+  **Decisión sobre SMTP:** se evaluó Resend (recomendado originalmente)
+  pero requiere verificar un dominio propio para poder enviarle a
+  cualquier destinatario (sin dominio, solo deja probar contigo mismo);
+  como alternativa sin dominio se propuso Gmail SMTP con una cuenta
+  personal (hasta 500 correos/día, contraseña de aplicación de Google,
+  sin costo) — el usuario prefirió **esperar a tener un correo oficial
+  del colegio** en vez de usar una cuenta de Gmail personal como
+  remitente, y lo pedirá al día siguiente. **Queda en standby**: cuando
+  haya un correo del colegio, el procedimiento es el mismo que con Gmail
+  personal (SMTP de Google/Workspace, contraseña de aplicación,
+  configurado en Supabase → Authentication → SMTP Settings), solo
+  cambia la cuenta remitente.
 
 ## Alcance del MVP — 3 módulos
 
