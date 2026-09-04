@@ -513,6 +513,74 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   alguien entre de verdad a producción y pruebe login con contraseña, el
   toggle a enlace mágico, y crear/cambiar contraseña desde `/mi-cuenta`
   antes de darla por confiable frente a usuarios reales.
+- **Botones sin indicador de envío + bug real del enlace de invitación
+  (encontrados en uso real en producción, después de "Login con
+  contraseña").** Dos hallazgos de la primera vez que se usó la app de
+  verdad con una persona nueva (Loyda Arguelles, invitada como
+  `direccion`):
+  - Los botones de "Enviar enlace de acceso", "Iniciar sesión" e
+    "Invitar usuario" no daban ninguna señal de que la solicitud
+    estaba en curso — un doble clic mandaba 2 solicitudes casi
+    simultáneas, y la segunda chocaba con el límite de frecuencia de
+    Supabase, mostrando un error aunque la primera sí hubiera
+    funcionado. Se corrigió con `BotonEnviar`
+    (`src/components/ui/BotonEnviar.tsx`), un componente cliente
+    chico basado en `useFormStatus` de React que deshabilita el botón
+    y muestra un texto de progreso ("Enviando...", "Entrando...",
+    "Guardando...", "Invitando...") mientras la Server Action está
+    pendiente — reutilizado en los 4 botones de envío del flujo de
+    login/cuenta/usuarios.
+  - **Bug real, más serio:** Loyda nunca pudo entrar con el enlace del
+    correo de invitación — le mostraba "Tu enlace ya no es válido o
+    expiró" aunque Supabase sí había validado el enlace con éxito
+    (confirmado en los logs de Supabase: su solicitud a `/verify`
+    regresó `303`, sin error). Causa: `invitarUsuario` usa
+    `admin.auth.admin.inviteUserByEmail`, una llamada de servidor sin
+    navegador involucrado — no hay forma de generar un verificador
+    PKCE como sí lo hace el login con enlace mágico normal
+    (`enviarEnlaceAcceso`, iniciado por el propio navegador de quien
+    inicia sesión). Sin PKCE, Supabase redirige usando el flujo
+    "implícito" viejo: el token va en el fragmento de la URL
+    (`#access_token=...`), no en `?code=`. Un fragmento nunca llega al
+    servidor — solo lo ve el navegador — así que `/auth/callback`
+    (antes un Route Handler puro de servidor, que solo sabía leer
+    `?code=`) siempre terminaba en "enlace inválido" para cualquier
+    invitación por correo, aunque el login con enlace mágico normal
+    funcionara perfecto. Este bug llevaba ahí desde la pieza de
+    Autenticación original — nunca se había probado de verdad porque
+    el usuario de prueba anterior se creó directo por script,
+    saltándose el correo de invitación.
+    **Corrección:** `/auth/callback` pasó de Route Handler a
+    `page.tsx`: si hay `?code=`, hace exactamente el mismo intercambio
+    de servidor que antes (el login con enlace mágico no cambió en
+    nada); si no, un componente cliente nuevo
+    (`CompletarSesionDesdeFragmento`) lee el fragmento, completa la
+    sesión con un cliente de navegador de Supabase nuevo
+    (`src/lib/supabase/client.ts`, no existía antes — solo había uno
+    de servidor) y hace un redirect completo de navegador (no
+    client-side) para que el middleware vea las cookies frescas en la
+    siguiente solicitud. Una revisión de seguridad enfocada (dado que
+    toca manejo de tokens de sesión) encontró que el `next` había
+    perdido el mismo resguardo contra open redirect que ya se había
+    agregado en `iniciarSesionConContrasena` — el `route.ts` original
+    prefijaba con `origin`, lo cual lo neutralizaba sin querer; el
+    `page.tsx` nuevo no lo hacía. Corregido con el mismo resguardo
+    (`next` debe empezar con `/`, nunca con `//`) antes de pushear.
+  - **Mientras se diagnosticaba y corregía**, para no dejar a Loyda
+    bloqueada, se le asignó una contraseña temporal directo por script
+    de una sola vez (`admin.auth.admin.updateUserById`, con la
+    `service role key`, borrado después de usarlo) y se le compartió
+    por fuera de la app (no por correo) — pudo entrar de inmediato por
+    `/login` con correo + esa contraseña, sin depender del enlace roto.
+    Es un atajo puntual para este caso, no una función nueva del
+    sistema — `actualizarContrasena` sigue sin permitir que nadie,
+    ni siquiera super_admin, vea o establezca la contraseña de otra
+    persona desde la app misma.
+  **Pendiente:** no se ha probado en vivo que una invitación de correo
+  nueva ahora sí complete el flujo del enlace de punta a punta (se
+  verificó por código y por revisión de seguridad, no clicleando un
+  enlace de invitación real después de la corrección) — vale la pena
+  invitar a alguien más pronto para confirmarlo con un caso real.
 
 ## Alcance del MVP — 3 módulos
 
