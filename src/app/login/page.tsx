@@ -13,7 +13,8 @@ export default async function LoginPage({
   searchParams: Promise<{ enviado?: string; error?: string; next?: string; modo?: string }>;
 }) {
   const { enviado, error, next, modo } = await searchParams;
-  const modoEnlace = modo === "enlace";
+  const ESTADOS_ENLACE = new Set(["envio_fallido", "correo_invalido", "enlace_invalido"]);
+  const modoEnlace = modo === "enlace" || enviado === "1" || (!!error && ESTADOS_ENLACE.has(error));
   const sufijoNext = next ? `next=${encodeURIComponent(next)}` : "";
 
   return (
@@ -81,6 +82,7 @@ export default async function LoginPage({
                   name="correo"
                   type="email"
                   required
+                  autoComplete="email"
                   className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
                 />
               </div>
@@ -96,6 +98,7 @@ export default async function LoginPage({
                   name="contrasena"
                   type="password"
                   required
+                  autoComplete="current-password"
                   className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
                 />
               </div>

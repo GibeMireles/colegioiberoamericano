@@ -493,9 +493,17 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   contraseña creada) colapsan al mismo mensaje genérico ("Correo o
   contraseña incorrectos"), para que el formulario de login no sirva
   para adivinar qué correos están dados de alta en el sistema — mismo
-  criterio que ya sigue `invitarUsuario` en otra parte del proyecto. Sin
-  reglas de complejidad más allá del mínimo de 8 caracteres, y sin
-  expiración ni historial de contraseñas — fuera de alcance a propósito.
+  criterio que ya sigue `invitarUsuario` en otra parte del proyecto. Esta
+  garantía cubre únicamente la vía nueva (`iniciarSesionConContrasena`);
+  el formulario de enlace mágico preexistente (`enviarEnlaceAcceso`, sin
+  tocar, fuera de alcance de esta pieza) sigue distinguiendo un correo
+  registrado de uno que no lo está — redirige a `?enviado=1` cuando el
+  correo existe y a `?error=envio_fallido` cuando no, porque
+  `signInWithOtp` con `shouldCreateUser: false` falla para direcciones
+  desconocidas. Se deja anotado aquí por precisión, no como algo que
+  esta pieza debía resolver. Sin reglas de complejidad más allá del
+  mínimo de 8 caracteres, y sin expiración ni historial de contraseñas —
+  fuera de alcance a propósito.
   **Verificación:** el test unitario del schema Zod (5 casos) pasa, y el
   build completo compila sin errores. A diferencia de lo que planteaba
   el spec original (que asumía poder probarla en vivo por primera vez,

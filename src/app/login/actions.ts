@@ -40,13 +40,18 @@ export async function iniciarSesionConContrasena(formData: FormData) {
   const contrasena = formData.get("contrasena");
   const next = formData.get("next");
 
+  const sufijoNext =
+    typeof next === "string" && next.trim().length > 0
+      ? `&next=${encodeURIComponent(next)}`
+      : "";
+
   if (
     typeof correo !== "string" ||
     correo.trim().length === 0 ||
     typeof contrasena !== "string" ||
     contrasena.length === 0
   ) {
-    redirect("/login?error=credenciales_invalidas");
+    redirect(`/login?error=credenciales_invalidas${sufijoNext}`);
   }
 
   const supabase = await createClient();
@@ -57,9 +62,10 @@ export async function iniciarSesionConContrasena(formData: FormData) {
   });
 
   if (error) {
-    redirect("/login?error=credenciales_invalidas");
+    redirect(`/login?error=credenciales_invalidas${sufijoNext}`);
   }
 
-  const destino = typeof next === "string" && next.trim().length > 0 ? next : "/";
+  const destino =
+    typeof next === "string" && next.startsWith("/") && !next.startsWith("//") ? next : "/";
   redirect(destino);
 }

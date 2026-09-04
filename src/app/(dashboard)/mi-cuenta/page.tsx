@@ -47,6 +47,7 @@ export default async function MiCuentaPage({
               type="password"
               required
               minLength={8}
+              autoComplete="new-password"
               className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
             />
           </div>
@@ -63,6 +64,7 @@ export default async function MiCuentaPage({
               type="password"
               required
               minLength={8}
+              autoComplete="new-password"
               className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2"
             />
           </div>
