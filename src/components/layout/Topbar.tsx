@@ -31,6 +31,9 @@ export async function Topbar({ perfil }: { perfil: PerfilActual | null }) {
       {perfil && (
         <div className="ml-auto flex items-center gap-3">
           <span className="text-sm text-zinc-600">{perfil.nombre_completo}</span>
+          <a href="/mi-cuenta" className="text-sm text-zinc-600 hover:underline">
+            Mi cuenta
+          </a>
           <form action={cerrarSesion}>
             <button type="submit" className="text-sm text-zinc-600 hover:underline">
               Cerrar sesión
