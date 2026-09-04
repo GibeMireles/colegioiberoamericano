@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { invitarUsuarioSchema } from "@/lib/usuarios/schema";
 import { ETIQUETAS_ROL, ROLES } from "@/lib/roles";
+import { BotonEnviar } from "@/components/ui/BotonEnviar";
 
 type Errores = { correo?: string; nombre_completo?: string; rol?: string };
 
@@ -90,12 +91,12 @@ export function InvitarUsuarioForm({
         </select>
         {errores.rol && <p className="mt-1 text-sm text-red-600">{errores.rol}</p>}
       </div>
-      <button
-        type="submit"
+      <BotonEnviar
+        textoEnviando="Invitando..."
         className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
       >
         Invitar usuario
-      </button>
+      </BotonEnviar>
     </form>
   );
 }
