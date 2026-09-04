@@ -1,4 +1,5 @@
 import { enviarEnlaceAcceso, iniciarSesionConContrasena } from "./actions";
+import { BotonEnviar } from "@/components/ui/BotonEnviar";
 
 const MENSAJES_ERROR: Record<string, string> = {
   correo_invalido: "Escribe un correo válido.",
@@ -51,12 +52,12 @@ export default async function LoginPage({
                     {MENSAJES_ERROR[error] ?? "Ocurrió un error. Intenta de nuevo."}
                   </p>
                 )}
-                <button
-                  type="submit"
+                <BotonEnviar
+                  textoEnviando="Enviando..."
                   className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
                 >
                   Enviar enlace de acceso
-                </button>
+                </BotonEnviar>
               </form>
               <a
                 href={`/login${sufijoNext ? `?${sufijoNext}` : ""}`}
@@ -107,12 +108,12 @@ export default async function LoginPage({
                   {MENSAJES_ERROR[error] ?? "Ocurrió un error. Intenta de nuevo."}
                 </p>
               )}
-              <button
-                type="submit"
+              <BotonEnviar
+                textoEnviando="Entrando..."
                 className="w-full rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
               >
                 Iniciar sesión
-              </button>
+              </BotonEnviar>
             </form>
             <a
               href={`/login?modo=enlace${sufijoNext ? `&${sufijoNext}` : ""}`}

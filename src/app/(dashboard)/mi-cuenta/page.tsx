@@ -1,5 +1,6 @@
 import { requerirRolPagina } from "@/lib/perfiles/requerirRolPagina";
 import { ROLES } from "@/lib/roles";
+import { BotonEnviar } from "@/components/ui/BotonEnviar";
 import { actualizarContrasena } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -73,12 +74,12 @@ export default async function MiCuentaPage({
               {MENSAJES_ERROR[error] ?? "Ocurrió un error. Intenta de nuevo."}
             </p>
           )}
-          <button
-            type="submit"
+          <BotonEnviar
+            textoEnviando="Guardando..."
             className="rounded-md bg-primario px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             Guardar contraseña
-          </button>
+          </BotonEnviar>
         </form>
       </div>
     </div>
