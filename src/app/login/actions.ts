@@ -34,3 +34,32 @@ export async function enviarEnlaceAcceso(formData: FormData) {
 
   redirect("/login?enviado=1");
 }
+
+export async function iniciarSesionConContrasena(formData: FormData) {
+  const correo = formData.get("correo");
+  const contrasena = formData.get("contrasena");
+  const next = formData.get("next");
+
+  if (
+    typeof correo !== "string" ||
+    correo.trim().length === 0 ||
+    typeof contrasena !== "string" ||
+    contrasena.length === 0
+  ) {
+    redirect("/login?error=credenciales_invalidas");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: correo.trim(),
+    password: contrasena,
+  });
+
+  if (error) {
+    redirect("/login?error=credenciales_invalidas");
+  }
+
+  const destino = typeof next === "string" && next.trim().length > 0 ? next : "/";
+  redirect(destino);
+}
