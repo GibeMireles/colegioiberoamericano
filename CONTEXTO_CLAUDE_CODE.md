@@ -459,6 +459,52 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   personal (SMTP de Google/Workspace, contraseña de aplicación,
   configurado en Supabase → Authentication → SMTP Settings), solo
   cambia la cuenta remitente.
+- **Login con contraseña** — ver
+  `docs/superpowers/specs/2026-09-04-login-contrasena-design.md`. Agrega
+  una segunda vía de entrada junto al enlace mágico existente, usando el
+  soporte nativo de contraseña de Supabase Auth (columna que `auth.users`
+  ya tenía, simplemente nunca invocada desde esta app hasta ahora) —
+  **no hizo falta ninguna migración de base de datos**. `/login` ahora
+  muestra por defecto un formulario de correo + contraseña
+  (`iniciarSesionConContrasena` en `src/app/login/actions.ts`, que llama
+  a `supabase.auth.signInWithPassword`); un enlace de texto debajo
+  ("¿No tienes contraseña o la olvidaste? Entra con un enlace por
+  correo") cambia, vía `?modo=enlace` (mismo patrón de query param que
+  `?ver=todos` en Alumnos o `?editar=1` en Calificaciones/Asistencia, sin
+  componente de cliente nuevo), a la vista de solo-correo de siempre —
+  `enviarEnlaceAcceso` no cambió una sola línea. Con esto el enlace
+  mágico deja de ser "la única forma de entrar" y pasa a cumplir dos
+  papeles: invitación (como ya hacía) y recuperación implícita para
+  quien no tiene contraseña o la olvidó — deliberadamente sin un flujo
+  separado de "olvidé mi contraseña" con correo dedicado. Nueva pantalla
+  `/mi-cuenta` (`src/app/(dashboard)/mi-cuenta/`), agregada a
+  `RUTAS_PROTEGIDAS` en el middleware y enlazada desde `Topbar`, donde
+  cualquiera de los 4 roles con sesión activa puede crear o cambiar su
+  propia contraseña (`actualizarContrasena`, validado con el nuevo
+  `actualizarContrasenaSchema` de `src/lib/cuenta/schema.ts` — mínimo 8
+  caracteres, confirmación debe coincidir). La Server Action usa
+  únicamente el cliente de Supabase ligado a la sesión de quien llama,
+  nunca el cliente admin/service-role — así que nadie, ni siquiera
+  `super_admin`, puede ver o establecer la contraseña de otra persona; un
+  admin que necesite "resetear" el acceso de alguien sigue usando el
+  enlace mágico, igual que hoy. Decisión deliberada de anti-enumeración:
+  los tres motivos de fallo al hacer login con contraseña (campos
+  vacíos, contraseña incorrecta, o un correo que todavía no tiene
+  contraseña creada) colapsan al mismo mensaje genérico ("Correo o
+  contraseña incorrectos"), para que el formulario de login no sirva
+  para adivinar qué correos están dados de alta en el sistema — mismo
+  criterio que ya sigue `invitarUsuario` en otra parte del proyecto. Sin
+  reglas de complejidad más allá del mínimo de 8 caracteres, y sin
+  expiración ni historial de contraseñas — fuera de alcance a propósito.
+  **Verificación:** el test unitario del schema Zod (5 casos) pasa, y el
+  build completo compila sin errores. A diferencia de lo que planteaba
+  el spec original (que asumía poder probarla en vivo por primera vez,
+  con producción ya corriendo), esta pieza **no** se verificó con una
+  sesión real en el navegador durante su implementación — quedó solo
+  implementada y verificada por build, no verificada en vivo. Falta que
+  alguien entre de verdad a producción y pruebe login con contraseña, el
+  toggle a enlace mágico, y crear/cambiar contraseña desde `/mi-cuenta`
+  antes de darla por confiable frente a usuarios reales.
 
 ## Alcance del MVP — 3 módulos
 
