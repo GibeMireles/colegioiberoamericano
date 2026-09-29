@@ -623,6 +623,8 @@ alter table asistencias drop constraint asistencias_alumno_id_fecha_key;
 -- estaban vacías y se redefinen completas.
 -- ==========================================================
 
+-- ⚠️ SOLO SE APLICÓ UNA VEZ, con las tablas vacías. NO re-ejecutar este bloque
+-- contra una base con datos: borraría todos los cargos y pagos.
 drop table if exists pagos;
 drop table if exists cargos;
 drop table if exists conceptos_pago;
@@ -1114,3 +1116,124 @@ grant execute on function generar_colegiaturas(uuid, uuid) to authenticated;
 grant execute on function registrar_pago(uuid, text, text, jsonb) to authenticated;
 grant execute on function anular_pago(uuid, text) to authenticated;
 grant execute on function cancelar_cargo(uuid, text) to authenticated;
+
+-- ==========================================================
+-- Pagos / Colegiaturas — endurecimiento de escrituras. Aplicada como migración
+-- `pagos_colegiaturas_endurecer_escrituras` (revisión final del plan
+-- 2026-09-29-pagos-colegiaturas). Cierra un hallazgo: con las políticas
+-- anteriores, caja/dirección podían modificar pagos y cargos directo por la API.
+-- ==========================================================
+-- Las escrituras de dinero solo pasan por las funciones: nadie (ni caja ni
+-- dirección) puede insertar o modificar pagos/aplicaciones, ni modificar
+-- cargos, directo por la API. Las funciones pasan a security definer (ya
+-- validan el rol de quien llama de forma explícita y no son ejecutables por
+-- anon); así corren con privilegios del dueño sin que authenticated necesite
+-- permisos de escritura sobre esas tablas.
+
+alter function registrar_pago(uuid, text, text, jsonb) security definer;
+
+create or replace function anular_pago(p_pago_id uuid, p_motivo text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if mi_perfil_id() is null or not (es_super_admin_o_direccion() or es_caja()) then
+    raise exception 'No tienes permiso para esta acción.' using hint = 'sin_permiso';
+  end if;
+  if coalesce(trim(p_motivo), '') = '' then
+    raise exception 'Escribe el motivo.' using hint = 'motivo_requerido';
+  end if;
+
+  update pagos
+  set anulado_en = now(), anulado_por = mi_perfil_id(), motivo_anulacion = trim(p_motivo)
+  where id = p_pago_id and anulado_en is null;
+
+  if not found then
+    if exists (select 1 from pagos where id = p_pago_id) then
+      raise exception 'Este pago ya estaba anulado.' using hint = 'ya_anulado';
+    end if;
+    raise exception 'No se encontró el pago.' using hint = 'pago_no_encontrado';
+  end if;
+end;
+$$;
+
+create or replace function cancelar_cargo(p_cargo_id uuid, p_motivo text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cargo cargos%rowtype;
+  v_folio bigint;
+begin
+  if mi_perfil_id() is null or not (es_super_admin_o_direccion() or es_caja()) then
+    raise exception 'No tienes permiso para esta acción.' using hint = 'sin_permiso';
+  end if;
+  if coalesce(trim(p_motivo), '') = '' then
+    raise exception 'Escribe el motivo.' using hint = 'motivo_requerido';
+  end if;
+
+  select * into v_cargo from cargos where id = p_cargo_id for update;
+  if not found then
+    raise exception 'No se encontró el cargo.' using hint = 'cargo_no_encontrado';
+  end if;
+  if v_cargo.cancelado_en is not null then
+    raise exception 'Este cargo ya estaba cancelado.' using hint = 'ya_cancelado';
+  end if;
+
+  select pg.folio into v_folio
+  from pago_aplicaciones pa
+  join pagos pg on pg.id = pa.pago_id and pg.anulado_en is null
+  where pa.cargo_id = p_cargo_id
+  order by pg.folio
+  limit 1;
+
+  if found then
+    raise exception 'Anula primero el pago folio %.', v_folio using hint = 'cargo_con_pagos';
+  end if;
+
+  update cargos
+  set cancelado_en = now(), cancelado_por = mi_perfil_id(), motivo_cancelacion = trim(p_motivo)
+  where id = p_cargo_id;
+end;
+$$;
+
+revoke execute on function anular_pago(uuid, text) from public, anon;
+revoke execute on function cancelar_cargo(uuid, text) from public, anon;
+grant execute on function anular_pago(uuid, text) to authenticated;
+grant execute on function cancelar_cargo(uuid, text) to authenticated;
+
+-- Sin escritura directa por la API
+drop policy "pagos alta personal pagos" on pagos;
+drop policy "pagos actualizacion personal pagos" on pagos;
+drop policy "pago_aplicaciones alta personal pagos" on pago_aplicaciones;
+drop policy "cargos actualizacion personal pagos" on cargos;
+revoke insert, update, delete on pagos, pago_aplicaciones from authenticated, anon;
+revoke update, delete on cargos from authenticated, anon;
+revoke insert on cargos from anon;
+revoke all on sequence pagos_folio_seq from anon, authenticated;
+
+-- Los cargos sueltos sí se insertan directo (desde la Server Action) y
+-- generar_colegiaturas los inserta como invoker: la autoría y el estado de
+-- cancelación no se pueden falsificar al insertar.
+create or replace function cargos_normalizar_alta()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.creado_por := mi_perfil_id();
+  new.creado_en := now();
+  new.cancelado_en := null;
+  new.cancelado_por := null;
+  new.motivo_cancelacion := null;
+  return new;
+end;
+$$;
+
+create trigger cargos_normalizar_alta
+  before insert on cargos
+  for each row execute function cargos_normalizar_alta();
