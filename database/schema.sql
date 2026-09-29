@@ -610,3 +610,252 @@ create policy "asistencias borrado admin" on asistencias
 -- de la migración de Prerequisites de arriba.
 -- ==========================================================
 alter table asistencias drop constraint asistencias_alumno_id_fecha_key;
+
+-- ==========================================================
+-- Pagos / Colegiaturas — esquema. Aplicada como migración
+-- `pagos_colegiaturas_esquema` (plan 2026-09-29-pagos-colegiaturas, Task 1).
+-- Redefine conceptos_pago, cargos y pagos (definidas arriba en su versión
+-- original, vacías al momento de esta migración).
+-- ==========================================================
+-- ==========================================================
+-- Pagos / Colegiaturas: esquema (spec 2026-09-29-pagos-colegiaturas)
+-- Las tablas conceptos_pago, cargos y pagos del esquema original
+-- estaban vacías y se redefinen completas.
+-- ==========================================================
+
+drop table if exists pagos;
+drop table if exists cargos;
+drop table if exists conceptos_pago;
+
+-- Configuración de colegiaturas por ciclo
+create table planes_pago (
+  id uuid primary key default gen_random_uuid(),
+  ciclo_escolar_id uuid not null references ciclos_escolares(id),
+  mensualidades smallint not null check (mensualidades in (10, 12)),
+  primer_mes date not null check (extract(day from primer_mes) = 1),
+  dia_vencimiento smallint not null default 10 check (dia_vencimiento between 1 and 28),
+  unique (ciclo_escolar_id, mensualidades)
+);
+
+create table precios_colegiatura (
+  id uuid primary key default gen_random_uuid(),
+  plan_pago_id uuid not null references planes_pago(id),
+  nivel_id uuid not null references niveles(id),
+  monto_mensual numeric(10,2) not null check (monto_mensual >= 0),
+  unique (plan_pago_id, nivel_id)
+);
+create index idx_precios_colegiatura_nivel on precios_colegiatura(nivel_id);
+
+-- Plan y beca por alumno y ciclo
+alter table inscripciones
+  add column plan_pago_id uuid references planes_pago(id),
+  add column beca_porcentaje numeric(5,2) not null default 0
+    check (beca_porcentaje between 0 and 100);
+create index idx_inscripciones_plan_pago on inscripciones(plan_pago_id);
+
+-- Catálogo de conceptos
+create table conceptos_pago (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null unique,
+  monto_default numeric(10,2) check (monto_default >= 0),
+  aplica_beca boolean not null default false,
+  es_colegiatura boolean not null default false,
+  activo boolean not null default true
+);
+create unique index idx_conceptos_una_colegiatura
+  on conceptos_pago (es_colegiatura) where es_colegiatura;
+
+-- Cargos (lo que se debe). Sin columna estatus: ver v_cargos_saldo.
+create table cargos (
+  id uuid primary key default gen_random_uuid(),
+  alumno_id uuid not null references alumnos(id),
+  concepto_pago_id uuid not null references conceptos_pago(id),
+  ciclo_escolar_id uuid not null references ciclos_escolares(id),
+  periodo date,
+  descripcion text not null,
+  monto_original numeric(10,2) not null check (monto_original >= 0),
+  beca_porcentaje numeric(5,2) not null default 0 check (beca_porcentaje between 0 and 100),
+  monto numeric(10,2) not null check (monto >= 0),
+  fecha_vencimiento date,
+  creado_por uuid references perfiles(id),
+  creado_en timestamptz not null default now(),
+  cancelado_en timestamptz,
+  cancelado_por uuid references perfiles(id),
+  motivo_cancelacion text
+);
+-- Excluye cancelados: cancelar una colegiatura y regenerar crea la corregida.
+create unique index idx_cargos_colegiatura_unica
+  on cargos (alumno_id, concepto_pago_id, ciclo_escolar_id, periodo)
+  where periodo is not null and cancelado_en is null;
+create index idx_cargos_alumno on cargos(alumno_id);
+create index idx_cargos_concepto on cargos(concepto_pago_id);
+create index idx_cargos_ciclo on cargos(ciclo_escolar_id);
+create index idx_cargos_creado_por on cargos(creado_por);
+create index idx_cargos_cancelado_por on cargos(cancelado_por);
+
+-- Pagos (lo que entra)
+create sequence pagos_folio_seq;
+create table pagos (
+  id uuid primary key default gen_random_uuid(),
+  folio bigint not null unique default nextval('pagos_folio_seq'),
+  alumno_id uuid not null references alumnos(id),
+  monto_total numeric(10,2) not null check (monto_total > 0),
+  fecha_pago timestamptz not null default now(),
+  metodo_pago text not null check (metodo_pago in ('efectivo', 'transferencia', 'tarjeta')),
+  referencia text,
+  registrado_por uuid not null references perfiles(id),
+  anulado_en timestamptz,
+  anulado_por uuid references perfiles(id),
+  motivo_anulacion text
+);
+alter sequence pagos_folio_seq owned by pagos.folio;
+grant usage, select on sequence pagos_folio_seq to authenticated;
+create index idx_pagos_alumno on pagos(alumno_id);
+create index idx_pagos_fecha on pagos(fecha_pago);
+create index idx_pagos_registrado_por on pagos(registrado_por);
+create index idx_pagos_anulado_por on pagos(anulado_por);
+
+create table pago_aplicaciones (
+  id uuid primary key default gen_random_uuid(),
+  pago_id uuid not null references pagos(id),
+  cargo_id uuid not null references cargos(id),
+  monto_aplicado numeric(10,2) not null check (monto_aplicado > 0),
+  unique (pago_id, cargo_id)
+);
+create index idx_pago_aplicaciones_cargo on pago_aplicaciones(cargo_id);
+
+-- ----------------------------------------------------------
+-- RLS: super_admin, direccion y caja con control total del módulo
+-- ----------------------------------------------------------
+alter table planes_pago enable row level security;
+alter table precios_colegiatura enable row level security;
+alter table conceptos_pago enable row level security;
+alter table cargos enable row level security;
+alter table pagos enable row level security;
+alter table pago_aplicaciones enable row level security;
+
+create policy "planes_pago personal pagos" on planes_pago for all
+  using ((select es_super_admin_o_direccion()) or (select es_caja()))
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "precios_colegiatura personal pagos" on precios_colegiatura for all
+  using ((select es_super_admin_o_direccion()) or (select es_caja()))
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "conceptos_pago personal pagos" on conceptos_pago for all
+  using ((select es_super_admin_o_direccion()) or (select es_caja()))
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+
+-- Sin delete: nada se borra.
+create policy "cargos lectura personal pagos" on cargos for select
+  using ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "cargos alta personal pagos" on cargos for insert
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "cargos actualizacion personal pagos" on cargos for update
+  using ((select es_super_admin_o_direccion()) or (select es_caja()))
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+
+create policy "pagos lectura personal pagos" on pagos for select
+  using ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "pagos alta personal pagos" on pagos for insert
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "pagos actualizacion personal pagos" on pagos for update
+  using ((select es_super_admin_o_direccion()) or (select es_caja()))
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+
+create policy "pago_aplicaciones lectura personal pagos" on pago_aplicaciones for select
+  using ((select es_super_admin_o_direccion()) or (select es_caja()));
+create policy "pago_aplicaciones alta personal pagos" on pago_aplicaciones for insert
+  with check ((select es_super_admin_o_direccion()) or (select es_caja()));
+
+-- Caja puede actualizar inscripciones (solo plan y beca, lo impone el trigger)
+create policy "inscripciones actualizacion caja" on inscripciones for update
+  using ((select es_caja())) with check ((select es_caja()));
+
+-- Caja lee perfiles: sin esto, "quién registró" sale vacío en recibo y corte
+create policy "caja lee perfiles" on perfiles for select
+  using ((select es_caja()));
+
+-- ----------------------------------------------------------
+-- Trigger: caja solo cambia plan/beca; el plan debe ser del mismo ciclo
+-- ----------------------------------------------------------
+create or replace function inscripciones_validar_plan_beca()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'UPDATE' and es_caja() and not es_super_admin_o_direccion() and (
+       new.id is distinct from old.id
+    or new.alumno_id is distinct from old.alumno_id
+    or new.grupo_id is distinct from old.grupo_id
+    or new.ciclo_escolar_id is distinct from old.ciclo_escolar_id
+    or new.fecha_inscripcion is distinct from old.fecha_inscripcion
+  ) then
+    raise exception 'Caja solo puede cambiar el plan de pagos y la beca.'
+      using hint = 'solo_plan_beca';
+  end if;
+
+  if new.plan_pago_id is not null and not exists (
+    select 1 from planes_pago
+    where id = new.plan_pago_id and ciclo_escolar_id = new.ciclo_escolar_id
+  ) then
+    raise exception 'El plan elegido no pertenece al ciclo de esta inscripción.'
+      using hint = 'plan_otro_ciclo';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger inscripciones_validar_plan_beca
+  before insert or update on inscripciones
+  for each row execute function inscripciones_validar_plan_beca();
+
+-- ----------------------------------------------------------
+-- Vistas (security_invoker: respetan el RLS de quien consulta)
+-- ----------------------------------------------------------
+create view v_cargos_saldo with (security_invoker = true) as
+select
+  c.*,
+  coalesce(p.pagado, 0)::numeric(10,2) as pagado,
+  (c.monto - coalesce(p.pagado, 0))::numeric(10,2) as saldo,
+  case
+    when c.cancelado_en is not null then 'cancelado'
+    when c.monto - coalesce(p.pagado, 0) <= 0 then 'pagado'
+    when c.fecha_vencimiento < (now() at time zone 'America/Mexico_City')::date then 'vencido'
+    when coalesce(p.pagado, 0) > 0 then 'parcial'
+    else 'pendiente'
+  end as estatus
+from cargos c
+left join lateral (
+  select sum(pa.monto_aplicado) as pagado
+  from pago_aplicaciones pa
+  join pagos pg on pg.id = pa.pago_id and pg.anulado_en is null
+  where pa.cargo_id = c.id
+) p on true;
+
+create view v_adeudos_alumno with (security_invoker = true) as
+select
+  alumno_id,
+  ciclo_escolar_id,
+  sum(saldo)::numeric(10,2) as adeudo_total,
+  coalesce(sum(saldo) filter (where estatus = 'vencido'), 0)::numeric(10,2) as adeudo_vencido,
+  min(fecha_vencimiento) filter (where saldo > 0) as vencimiento_mas_antiguo
+from v_cargos_saldo
+where estatus <> 'cancelado'
+group by alumno_id, ciclo_escolar_id;
+
+revoke all on v_cargos_saldo, v_adeudos_alumno from anon;
+grant select on v_cargos_saldo, v_adeudos_alumno to authenticated;
+
+-- ----------------------------------------------------------
+-- Semillas
+-- ----------------------------------------------------------
+insert into conceptos_pago (nombre, aplica_beca, es_colegiatura) values
+  ('Colegiatura', true, true),
+  ('Inscripción', false, false),
+  ('Recargo', false, false);
+
+insert into planes_pago (ciclo_escolar_id, mensualidades, primer_mes, dia_vencimiento)
+select id, 10, date '2026-09-01', 10 from ciclos_escolares where nombre = '2026-2027'
+union all
+select id, 12, date '2026-08-01', 10 from ciclos_escolares where nombre = '2026-2027';
