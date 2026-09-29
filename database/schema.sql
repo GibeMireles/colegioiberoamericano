@@ -859,3 +859,258 @@ insert into planes_pago (ciclo_escolar_id, mensualidades, primer_mes, dia_vencim
 select id, 10, date '2026-09-01', 10 from ciclos_escolares where nombre = '2026-2027'
 union all
 select id, 12, date '2026-08-01', 10 from ciclos_escolares where nombre = '2026-2027';
+
+-- ==========================================================
+-- Pagos / Colegiaturas — funciones. Aplicada como migración
+-- `pagos_colegiaturas_funciones` (plan 2026-09-29-pagos-colegiaturas, Task 2).
+-- ==========================================================
+-- ==========================================================
+-- Pagos / Colegiaturas: funciones (security invoker: el RLS de quien
+-- llama aplica dentro de la función)
+-- ==========================================================
+
+create or replace function generar_colegiaturas(p_ciclo_id uuid, p_grupo_id uuid default null)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_concepto_id uuid;
+  v_perfil uuid := mi_perfil_id();
+  v_creados int := 0;
+  v_filas int;
+  v_omitidos jsonb := '[]'::jsonb;
+  v_plan planes_pago%rowtype;
+  v_precio numeric(10,2);
+  v_mes date;
+  v_k int;
+  v_meses text[] := array['enero','febrero','marzo','abril','mayo','junio',
+                          'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  r record;
+begin
+  if not (es_super_admin_o_direccion() or es_caja()) then
+    raise exception 'No tienes permiso para esta acción.' using hint = 'sin_permiso';
+  end if;
+
+  select id into v_concepto_id from conceptos_pago where es_colegiatura;
+  if v_concepto_id is null then
+    raise exception 'No hay un concepto de Colegiatura configurado.'
+      using hint = 'sin_concepto_colegiatura';
+  end if;
+
+  for r in
+    select ins.alumno_id, ins.plan_pago_id, ins.beca_porcentaje, gr.nivel_id,
+           trim(concat_ws(' ', a.apellido_paterno, a.apellido_materno)) || ', ' || a.nombres as nombre
+    from inscripciones ins
+    join alumnos a on a.id = ins.alumno_id and a.activo
+    join grupos g on g.id = ins.grupo_id
+    join grados gr on gr.id = g.grado_id
+    where ins.ciclo_escolar_id = p_ciclo_id
+      and (p_grupo_id is null or ins.grupo_id = p_grupo_id)
+  loop
+    select * into v_plan from planes_pago
+    where id = r.plan_pago_id and ciclo_escolar_id = p_ciclo_id;
+
+    if not found then
+      v_omitidos := v_omitidos || jsonb_build_object(
+        'alumno_id', r.alumno_id, 'nombre', r.nombre, 'motivo', 'sin_plan');
+      continue;
+    end if;
+
+    select monto_mensual into v_precio from precios_colegiatura
+    where plan_pago_id = v_plan.id and nivel_id = r.nivel_id;
+
+    if not found then
+      v_omitidos := v_omitidos || jsonb_build_object(
+        'alumno_id', r.alumno_id, 'nombre', r.nombre, 'motivo', 'sin_precio');
+      continue;
+    end if;
+
+    for v_k in 0 .. v_plan.mensualidades - 1 loop
+      v_mes := (v_plan.primer_mes + make_interval(months => v_k))::date;
+
+      insert into cargos (
+        alumno_id, concepto_pago_id, ciclo_escolar_id, periodo, descripcion,
+        monto_original, beca_porcentaje, monto, fecha_vencimiento, creado_por
+      ) values (
+        r.alumno_id, v_concepto_id, p_ciclo_id, v_mes,
+        'Colegiatura ' || v_meses[extract(month from v_mes)::int] || ' ' || extract(year from v_mes)::int,
+        v_precio, r.beca_porcentaje,
+        round(v_precio * (1 - r.beca_porcentaje / 100), 2),
+        v_mes + (v_plan.dia_vencimiento - 1),
+        v_perfil
+      )
+      on conflict (alumno_id, concepto_pago_id, ciclo_escolar_id, periodo)
+        where periodo is not null and cancelado_en is null
+      do nothing;
+
+      get diagnostics v_filas = row_count;
+      v_creados := v_creados + v_filas;
+    end loop;
+  end loop;
+
+  return jsonb_build_object('creados', v_creados, 'omitidos', v_omitidos);
+end;
+$$;
+
+create or replace function registrar_pago(
+  p_alumno_id uuid, p_metodo text, p_referencia text, p_aplicaciones jsonb
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_perfil uuid := mi_perfil_id();
+  v_app record;
+  v_cargo cargos%rowtype;
+  v_saldo numeric(10,2);
+  v_total numeric(10,2) := 0;
+  v_pago_id uuid;
+  v_folio bigint;
+begin
+  if v_perfil is null or not (es_super_admin_o_direccion() or es_caja()) then
+    raise exception 'No tienes permiso para esta acción.' using hint = 'sin_permiso';
+  end if;
+
+  if p_aplicaciones is null or jsonb_typeof(p_aplicaciones) <> 'array'
+     or jsonb_array_length(p_aplicaciones) = 0 then
+    raise exception 'Selecciona al menos un cargo.' using hint = 'sin_aplicaciones';
+  end if;
+
+  if (select count(distinct x->>'cargo_id') from jsonb_array_elements(p_aplicaciones) x)
+     <> jsonb_array_length(p_aplicaciones) then
+    raise exception 'Un cargo aparece dos veces.' using hint = 'cargo_repetido';
+  end if;
+
+  if p_metodo is null or p_metodo not in ('efectivo', 'transferencia', 'tarjeta') then
+    raise exception 'Método de pago inválido.' using hint = 'metodo_invalido';
+  end if;
+
+  -- Bloquea los cargos (en orden fijo, evita deadlocks) para que dos
+  -- cobros simultáneos no liquiden el mismo saldo.
+  perform 1 from cargos
+  where id in (select (x->>'cargo_id')::uuid from jsonb_array_elements(p_aplicaciones) x)
+  order by id
+  for update;
+
+  for v_app in
+    select (x->>'cargo_id')::uuid as cargo_id, (x->>'monto')::numeric(10,2) as monto
+    from jsonb_array_elements(p_aplicaciones) x
+  loop
+    select * into v_cargo from cargos where id = v_app.cargo_id;
+
+    if not found or v_cargo.alumno_id <> p_alumno_id then
+      raise exception 'Uno de los cargos no pertenece a este alumno.' using hint = 'cargo_invalido';
+    end if;
+    if v_cargo.cancelado_en is not null then
+      raise exception 'El cargo "%" está cancelado.', v_cargo.descripcion using hint = 'cargo_cancelado';
+    end if;
+    if v_app.monto is null or v_app.monto <= 0 then
+      raise exception 'Los montos deben ser mayores a 0.' using hint = 'monto_invalido';
+    end if;
+
+    select v_cargo.monto - coalesce(sum(pa.monto_aplicado), 0) into v_saldo
+    from pago_aplicaciones pa
+    join pagos pg on pg.id = pa.pago_id and pg.anulado_en is null
+    where pa.cargo_id = v_cargo.id;
+
+    if v_app.monto > v_saldo then
+      raise exception 'El monto para "%" excede su saldo de %.', v_cargo.descripcion, v_saldo
+        using hint = 'monto_excede_saldo';
+    end if;
+
+    v_total := v_total + v_app.monto;
+  end loop;
+
+  insert into pagos (alumno_id, monto_total, metodo_pago, referencia, registrado_por)
+  values (p_alumno_id, v_total, p_metodo, nullif(trim(p_referencia), ''), v_perfil)
+  returning id, folio into v_pago_id, v_folio;
+
+  insert into pago_aplicaciones (pago_id, cargo_id, monto_aplicado)
+  select v_pago_id, (x->>'cargo_id')::uuid, (x->>'monto')::numeric(10,2)
+  from jsonb_array_elements(p_aplicaciones) x;
+
+  return jsonb_build_object('pago_id', v_pago_id, 'folio', v_folio);
+end;
+$$;
+
+create or replace function anular_pago(p_pago_id uuid, p_motivo text)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if not (es_super_admin_o_direccion() or es_caja()) then
+    raise exception 'No tienes permiso para esta acción.' using hint = 'sin_permiso';
+  end if;
+  if coalesce(trim(p_motivo), '') = '' then
+    raise exception 'Escribe el motivo.' using hint = 'motivo_requerido';
+  end if;
+
+  update pagos
+  set anulado_en = now(), anulado_por = mi_perfil_id(), motivo_anulacion = trim(p_motivo)
+  where id = p_pago_id and anulado_en is null;
+
+  if not found then
+    if exists (select 1 from pagos where id = p_pago_id) then
+      raise exception 'Este pago ya estaba anulado.' using hint = 'ya_anulado';
+    end if;
+    raise exception 'No se encontró el pago.' using hint = 'pago_no_encontrado';
+  end if;
+end;
+$$;
+
+create or replace function cancelar_cargo(p_cargo_id uuid, p_motivo text)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_cargo cargos%rowtype;
+  v_folio bigint;
+begin
+  if not (es_super_admin_o_direccion() or es_caja()) then
+    raise exception 'No tienes permiso para esta acción.' using hint = 'sin_permiso';
+  end if;
+  if coalesce(trim(p_motivo), '') = '' then
+    raise exception 'Escribe el motivo.' using hint = 'motivo_requerido';
+  end if;
+
+  select * into v_cargo from cargos where id = p_cargo_id for update;
+  if not found then
+    raise exception 'No se encontró el cargo.' using hint = 'cargo_no_encontrado';
+  end if;
+  if v_cargo.cancelado_en is not null then
+    raise exception 'Este cargo ya estaba cancelado.' using hint = 'ya_cancelado';
+  end if;
+
+  select pg.folio into v_folio
+  from pago_aplicaciones pa
+  join pagos pg on pg.id = pa.pago_id and pg.anulado_en is null
+  where pa.cargo_id = p_cargo_id
+  order by pg.folio
+  limit 1;
+
+  if found then
+    raise exception 'Anula primero el pago folio %.', v_folio using hint = 'cargo_con_pagos';
+  end if;
+
+  update cargos
+  set cancelado_en = now(), cancelado_por = mi_perfil_id(), motivo_cancelacion = trim(p_motivo)
+  where id = p_cargo_id;
+end;
+$$;
+
+revoke execute on function generar_colegiaturas(uuid, uuid) from public, anon;
+revoke execute on function registrar_pago(uuid, text, text, jsonb) from public, anon;
+revoke execute on function anular_pago(uuid, text) from public, anon;
+revoke execute on function cancelar_cargo(uuid, text) from public, anon;
+grant execute on function generar_colegiaturas(uuid, uuid) to authenticated;
+grant execute on function registrar_pago(uuid, text, text, jsonb) to authenticated;
+grant execute on function anular_pago(uuid, text) to authenticated;
+grant execute on function cancelar_cargo(uuid, text) to authenticated;
