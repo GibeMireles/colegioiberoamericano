@@ -7,7 +7,7 @@ export async function Topbar({ perfil }: { perfil: PerfilActual | null }) {
   const config = await getConfiguracion();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-black/10 bg-white px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-black/10 bg-white px-6 print:hidden">
       {config.logoUrl ? (
         <Image
           src={config.logoUrl}

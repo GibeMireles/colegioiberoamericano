@@ -11,7 +11,7 @@ export function Sidebar({ rol }: { rol: Rol | null }) {
 
   return (
     <nav
-      className="flex w-56 shrink-0 flex-col gap-1 border-r border-black/10 bg-white p-4"
+      className="flex w-56 shrink-0 flex-col gap-1 border-r border-black/10 bg-white p-4 print:hidden"
       aria-label="Navegación principal"
     >
       {items.map((item) => {
