@@ -158,8 +158,12 @@ create table cargos (
 
 create unique index idx_cargos_colegiatura_unica
   on cargos (alumno_id, concepto_pago_id, ciclo_escolar_id, periodo)
-  where periodo is not null;
+  where periodo is not null and cancelado_en is null;
 ```
+
+El índice excluye los cargos cancelados: así, cancelar una colegiatura y
+volver a generar crea la versión corregida en vez de chocar con la
+cancelada.
 
 - `monto = round(monto_original * (1 - beca_porcentaje / 100), 2)`.
 - La beca se **congela** en el cargo: cambiar la beca o el plan de una
@@ -306,6 +310,10 @@ un solo insert desde la Server Action.
   `beca_porcentaje`. Así la restricción vale también vía API directa, no
   solo desde la Server Action (que además valida con un schema Zod que
   solo acepta esos dos campos).
+- **`perfiles`**: `caja` hoy solo lee su propio perfil. Se agrega una
+  política de lectura para `es_caja()`; sin ella, el recibo, el
+  historial y el corte de caja mostrarían "—" en "quién registró" para
+  cualquier pago capturado por otra persona.
 - **Server Actions**: todas con `requerirRol(["super_admin", "direccion", "caja"])`;
   páginas con `requerirRolPagina` igual. `middleware.ts` ya protege
   `/pagos`.
@@ -314,9 +322,11 @@ un solo insert desde la Server Action.
 
 Submenú en `/pagos`: **Alumnos · Adeudos · Corte de caja · Configuración**.
 
-1. **`/pagos`** — buscador de alumno por nombre, con la navegación
-   Nivel → Grado → Grupo como alternativa. Cada alumno muestra su saldo
-   pendiente del ciclo activo.
+1. **`/pagos`** — buscador de alumno por nombre (`?q=`, sin distinguir
+   acentos) y, como alternativa, un selector de grupo (`?grupo=`) que
+   lista a todo el grupo. Cada alumno muestra su adeudo y vencido del
+   ciclo activo. (Se prefiere el selector a la navegación por tarjetas
+   Nivel → Grado → Grupo: Caja llega al alumno en un paso.)
 2. **`/pagos/alumno/[alumnoId]`** — estado de cuenta del ciclo activo:
    - Encabezado: alumno, grupo, plan, beca, saldo total, vencido.
      Plan y beca editables aquí.
@@ -329,7 +339,8 @@ Submenú en `/pagos`: **Alumnos · Adeudos · Corte de caja · Configuración**.
    - **Agregar cargo**: concepto (no colegiatura), monto (sugerido del
      concepto), descripción, vencimiento opcional.
    - Historial de pagos: folio (enlace al recibo), fecha, total, método,
-     quién; anulados tachados. Acción "Anular" con motivo.
+     quién; anulados tachados. La acción "Anular" (con motivo) vive en
+     la página del recibo, para anular viendo exactamente qué se revierte.
 3. **`/pagos/recibo/[pagoId]`** — recibo: logo y colores de
    `configuracion`, folio, fecha, alumno y grupo, cargos liquidados
    (original, beca, aplicado), total, método, referencia, quién registró;
@@ -347,8 +358,11 @@ Submenú en `/pagos`: **Alumnos · Adeudos · Corte de caja · Configuración**.
 6. **`/pagos/configuracion`** — planes del ciclo activo (mensualidades,
    primer mes, día de vencimiento), tabla de precios nivel × plan,
    catálogo de conceptos (alta, edición, activar/desactivar), y botón
-   **Generar colegiaturas** (todo el ciclo o un grupo) que muestra el
-   resultado: creados y omitidos con su motivo.
+   **Generar colegiaturas** (todo el ciclo o un grupo) que muestra
+   cuántos cargos creó. Debajo, una lista **siempre visible** de alumnos
+   activos que la generación omitiría ("Sin plan" / "Sin precio"),
+   calculada al cargar la página — no depende de haber corrido la
+   generación y no hay que pasar la lista por la URL.
 
 Una utilidad compartida `fechaHoyMexico()` en `src/lib/fechas.ts` resuelve
 "hoy" en America/Mexico_City (no UTC) para Pagos. Migrar Asistencia a
