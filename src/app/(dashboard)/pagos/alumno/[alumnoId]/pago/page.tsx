@@ -67,7 +67,11 @@ export default async function RegistrarPagoPage({
       {cargos.length === 0 ? (
         <p className="text-sm text-zinc-600">Este alumno no tiene cargos pendientes.</p>
       ) : (
-        <FormularioPago cargos={cargos} accion={registrarPago.bind(null, alumnoId)} />
+        <FormularioPago
+          key={cargos.map((cargo) => `${cargo.id}:${cargo.saldo}`).join("|")}
+          cargos={cargos}
+          accion={registrarPago.bind(null, alumnoId)}
+        />
       )}
     </div>
   );

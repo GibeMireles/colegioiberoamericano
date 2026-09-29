@@ -133,7 +133,7 @@ export default async function ConfiguracionPagosPage({
     <div className="space-y-10">
       <h1 className="text-2xl font-semibold text-zinc-900">Configuración de pagos</h1>
 
-      {ok && MENSAJES_OK[ok] && (
+      {ok && Object.hasOwn(MENSAJES_OK, ok) && (
         <p className="rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-800">{MENSAJES_OK[ok]}</p>
       )}
       {creados !== undefined && Number.isFinite(creadosNumero) && (

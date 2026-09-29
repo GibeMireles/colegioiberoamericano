@@ -14,6 +14,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// PostgREST corta las respuestas en 1000 filas (max-rows del proyecto).
+const LIMITE_FILAS = 1000;
+
 export default async function CortePage({
   searchParams,
 }: {
@@ -88,6 +91,12 @@ export default async function CortePage({
       {rangoInvertido && (
         <p className="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">
           La fecha &quot;desde&quot; es posterior a &quot;hasta&quot;.
+        </p>
+      )}
+
+      {pagos.length >= LIMITE_FILAS && (
+        <p className="mt-4 rounded-md bg-red-50 px-4 py-2 text-sm text-red-800">
+          El rango tiene demasiados pagos para mostrarse completo; los totales podrían estar incompletos. Elige un rango más corto.
         </p>
       )}
 

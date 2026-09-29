@@ -182,6 +182,8 @@ export interface PagoRecibo {
   montoTotal: number;
   registradoPor: string;
   anulado: boolean;
+  anuladoEn: string | null;
+  anuladoPor: string | null;
   motivoAnulacion: string | null;
   alumnoId: string;
   alumnoNombre: string;
@@ -196,7 +198,7 @@ export async function obtenerPagoParaRecibo(pagoId: string): Promise<PagoRecibo 
   const { data: pago, error } = await supabase
     .from("pagos")
     .select(
-      "id, folio, fecha_pago, metodo_pago, referencia, monto_total, anulado_en, motivo_anulacion, alumno_id, alumnos(nombres, apellido_paterno, apellido_materno, matricula), registrado:perfiles!pagos_registrado_por_fkey(nombre_completo), pago_aplicaciones(monto_aplicado, cargos(descripcion, monto_original, beca_porcentaje, monto, ciclo_escolar_id, fecha_vencimiento))"
+      "id, folio, fecha_pago, metodo_pago, referencia, monto_total, anulado_en, motivo_anulacion, alumno_id, alumnos(nombres, apellido_paterno, apellido_materno, matricula), registrado:perfiles!pagos_registrado_por_fkey(nombre_completo), anulado:perfiles!pagos_anulado_por_fkey(nombre_completo), pago_aplicaciones(monto_aplicado, cargos(descripcion, monto_original, beca_porcentaje, monto, ciclo_escolar_id, fecha_vencimiento))"
     )
     .eq("id", pagoId)
     .maybeSingle();
@@ -237,6 +239,8 @@ export async function obtenerPagoParaRecibo(pagoId: string): Promise<PagoRecibo 
     montoTotal: Number(pago.monto_total),
     registradoPor: primero(pago.registrado)?.nombre_completo ?? "—",
     anulado: pago.anulado_en !== null,
+    anuladoEn: pago.anulado_en,
+    anuladoPor: primero(pago.anulado)?.nombre_completo ?? null,
     motivoAnulacion: pago.motivo_anulacion,
     alumnoId: pago.alumno_id,
     alumnoNombre: alumno ? nombreCompletoAlumno(alumno) : "—",

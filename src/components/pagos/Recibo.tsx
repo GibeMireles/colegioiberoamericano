@@ -85,8 +85,14 @@ export function Recibo({ pago, config }: { pago: PagoRecibo; config: Configuraci
 
       <footer className="mt-6 text-xs text-zinc-500">
         Registró: {pago.registradoPor}
-        {pago.anulado && pago.motivoAnulacion && (
-          <div className="mt-1 font-medium text-red-700">Pago anulado. Motivo: {pago.motivoAnulacion}</div>
+        {pago.anulado && (
+          <div className="mt-1 font-medium text-red-700">
+            Pago anulado
+            {pago.anuladoPor && ` por ${pago.anuladoPor}`}
+            {pago.anuladoEn && ` el ${formatearFechaHora(pago.anuladoEn)}`}
+            {pago.motivoAnulacion && `. Motivo: ${pago.motivoAnulacion}`}
+            {!pago.motivoAnulacion && "."}
+          </div>
         )}
       </footer>
     </article>
