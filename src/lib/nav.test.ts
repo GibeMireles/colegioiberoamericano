@@ -11,6 +11,11 @@ describe("NAV_ITEMS", () => {
       "/calificaciones",
       "/usuarios",
     ]);
+    expect(NAV_ITEMS.find((item) => item.href === "/pagos")?.rolesPermitidos).toEqual([
+      "super_admin",
+      "direccion",
+      "caja",
+    ]);
     expect(NAV_ITEMS.find((item) => item.href === "/materias")?.rolesPermitidos).toEqual([
       "super_admin",
       "direccion",
@@ -47,13 +52,14 @@ describe("isNavItemActive", () => {
 describe("navItemsVisibles", () => {
   it("includes items with no rolesPermitidos regardless of rol", () => {
     const hrefs = navItemsVisibles(null).map((item) => item.href);
-    expect(hrefs).toEqual(["/alumnos", "/pagos", "/asistencia"]);
+    expect(hrefs).toEqual(["/alumnos", "/asistencia"]);
   });
 
   it("excludes materias y usuarios for docente, but includes calificaciones", () => {
     const hrefs = navItemsVisibles("docente").map((item) => item.href);
     expect(hrefs).not.toContain("/materias");
     expect(hrefs).not.toContain("/usuarios");
+    expect(hrefs).not.toContain("/pagos");
     expect(hrefs).toContain("/calificaciones");
   });
 
@@ -69,5 +75,10 @@ describe("navItemsVisibles", () => {
     expect(hrefs).toContain("/materias");
     expect(hrefs).toContain("/calificaciones");
     expect(hrefs).toContain("/usuarios");
+  });
+
+  it("includes pagos for caja", () => {
+    const hrefs = navItemsVisibles("caja").map((item) => item.href);
+    expect(hrefs).toContain("/pagos");
   });
 });

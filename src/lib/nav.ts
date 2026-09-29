@@ -8,7 +8,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Alumnos y grados", href: "/alumnos" },
-  { label: "Pagos", href: "/pagos" },
+  { label: "Pagos", href: "/pagos", rolesPermitidos: ["super_admin", "direccion", "caja"] },
   { label: "Listas / Asistencia", href: "/asistencia" },
   { label: "Materias", href: "/materias", rolesPermitidos: ["super_admin", "direccion"] },
   {
