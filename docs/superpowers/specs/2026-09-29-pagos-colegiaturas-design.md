@@ -406,3 +406,25 @@ esa utilidad queda fuera de esta pieza.
   pendiente de verificación de RLS por rol.
 - `get_advisors` (seguridad y performance) al terminar: sin tablas sin
   RLS, sin FKs sin índice en las tablas de Pagos.
+
+## Enmienda (revisión final, 2026-09-30)
+
+El diseño original (políticas de insert/update para los roles del módulo
+más funciones `security invoker`) permitía que cualquier usuario de Caja
+o Dirección, con su propio token y directo por la API, modificara los
+registros de dinero (montos, fechas, método, quién registró, sobrepagos)
+sin rastro. Se corrigió con la migración
+`pagos_colegiaturas_endurecer_escrituras`:
+
+- `registrar_pago`, `anular_pago` y `cancelar_cargo` pasan a `security
+  definer`, con validación explícita de rol y de perfil dentro de la
+  función; `anon` no puede ejecutarlas.
+- Se revocaron los permisos y políticas de insert/update directos sobre
+  `pagos` y `pago_aplicaciones`, y de update sobre `cargos`.
+- Un trigger BEFORE INSERT sobre `cargos` normaliza la autoría
+  (`creado_por`/`creado_en`) y anula cualquier intento de insertar un
+  cargo ya cancelado.
+
+Las secciones anteriores de este documento no se reescriben; donde
+digan `security invoker` o políticas de escritura directa, prevalece
+esta enmienda.

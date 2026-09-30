@@ -70,7 +70,8 @@ eliminaron.)
 🚧 En desarrollo — layout base terminado (navegación + tema de marca);
 Supabase real conectado y con el esquema migrado. El módulo **Alumnos
 y grados** está implementado (alta, edición, listado, baja/reactivación
-lógica). Pagos y Listas/Asistencia siguen siendo placeholders.
+lógica), y los otros dos módulos del MVP (Pagos / colegiaturas y
+Listas/Asistencia) ya tienen funcionalidad real.
 
 ### Variables de entorno
 

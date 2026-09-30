@@ -870,6 +870,7 @@ select id, 12, date '2026-08-01', 10 from ciclos_escolares where nombre = '2026-
 -- Pagos / Colegiaturas: funciones (security invoker: el RLS de quien
 -- llama aplica dentro de la función)
 -- ==========================================================
+-- Nota: registrar_pago, anular_pago y cancelar_cargo pasan a security definer más abajo (migración pagos_colegiaturas_endurecer_escrituras).
 
 create or replace function generar_colegiaturas(p_ciclo_id uuid, p_grupo_id uuid default null)
 returns jsonb

@@ -581,6 +581,92 @@ escuela. No los repito aquí para evitar que queden desincronizados.
   verificó por código y por revisión de seguridad, no clicleando un
   enlace de invitación real después de la corrección) — vale la pena
   invitar a alguien más pronto para confirmarlo con un caso real.
+- **Pagos / Colegiaturas** — ver
+  `docs/superpowers/specs/2026-09-29-pagos-colegiaturas-design.md` y
+  `docs/superpowers/plans/2026-09-29-pagos-colegiaturas.md`. Punto de
+  partida: el borrador del usuario en
+  `docs/borradores/2026-09-29-pagos-borrador-schema.sql` (escrito sobre
+  el esquema multi-escuela viejo; adaptado a instancia dedicada).
+  **Decisiones:** las colegiaturas se generan en bloque por ciclo o por
+  grupo (idempotente); cada familia elige, por alumno y ciclo, un plan de
+  10 (sep-jun) o de 12 (ago-jul) mensualidades; el precio es por nivel y
+  por plan (tabla `precios_colegiatura`, configurable); el vencimiento es
+  el día 10 (configurable por ciclo en `planes_pago`); la beca es un %
+  por inscripción, aplica solo sobre colegiaturas y queda **congelada**
+  en cada cargo al crearlo (cambiarla no toca cargos ya generados: se
+  cancelan y se regeneran). Hay pagos parciales y pagos de varios cargos
+  (`pago_aplicaciones`), sin saldo a favor y sin recargos automáticos
+  (Caja agrega un cargo "Recargo" a mano). Nada se borra: los pagos se
+  anulan y los cargos se cancelan, guardando quién, cuándo y por qué.
+  Recibo imprimible con folio consecutivo (componente `Recibo` aislado,
+  para reutilizarlo en un futuro correo al tutor), reporte de adeudos y
+  corte de caja. **Caja tiene control total del módulo** (igual que
+  Dirección y Super admin); Docente no tiene acceso (el menú "Pagos"
+  ahora se oculta a docente).
+  **Arquitectura:** 4 funciones de Postgres atómicas
+  (`generar_colegiaturas`, `registrar_pago`, `anular_pago`,
+  `cancelar_cargo`) llamadas vía `rpc` desde Server Actions; 2 vistas
+  `security_invoker` (`v_cargos_saldo`, con estatus calculado
+  pendiente/parcial/pagado/vencido/cancelado usando la fecha de hoy en
+  America/Mexico_City, y `v_adeudos_alumno`); un trigger en
+  `inscripciones` que limita a Caja a cambiar solo plan y beca y valida
+  que el plan sea del mismo ciclo; una política nueva para que Caja lea
+  `perfiles` (si no, "quién registró" salía vacío); utilidades
+  `src/lib/fechas.ts` (hoy en México, sin `toISOString` del servidor) y
+  `src/lib/pagos/*`; los errores de negocio viajan como `hint` de
+  Postgres → `?error=<código>` → mensaje en español (nunca el genérico
+  de React #441).
+  **Hallazgo real de la revisión final, ya corregido:** con las políticas
+  originales (las que pedía el spec: insert/update para caja/dirección y
+  funciones `security invoker`), cualquier usuario de Caja o Dirección
+  podía, con su propio token, modificar pagos y cargos directo por la API
+  (montos, fechas, método, quién registró, sobrepagos) sin rastro. Se
+  corrigió con la migración `pagos_colegiaturas_endurecer_escrituras`:
+  `registrar_pago`, `anular_pago` y `cancelar_cargo` pasan a `security
+  definer` (validan rol y perfil explícitamente; anon no puede
+  ejecutarlas), se quitaron los permisos y políticas de insert/update
+  directos sobre `pagos`/`pago_aplicaciones` y de update sobre `cargos`,
+  y un trigger en el alta de `cargos` fuerza `creado_por`/`creado_en` y
+  anula cualquier intento de insertar un cargo ya cancelado. Esto sube a
+  **14** las funciones `security definer` del proyecto (aparecen en el
+  advisor `authenticated_security_definer_function_executable`,
+  esperado). El spec quedó con una enmienda al final.
+  **Verificación:** 90 tests unitarios (fechas en hora de México, incl.
+  pago a las 23:30, sumas en centavos, schemas, errores, menú); traza SQL
+  completa como postgres (`TRAZA_PAGOS_OK`: generación, idempotencia,
+  beca y redondeo, beca 100 %, vencido, parcial, pago múltiple, sobrepago
+  rechazado, cargo ajeno/repetido/método inválido, anulación que restituye
+  saldos, cancelar con pagos rechazado, regenerar tras cancelar, trigger
+  de plan y de Caja, docente sin permiso); y traza como **sesión simulada
+  de Caja con RLS activo** (`TRAZA_CAJA_OK`: Caja opera solo vía
+  funciones, escrituras directas rechazadas, Docente no ve pagos ni
+  cargos). Ambas trazas se revierten solas; el folio se reinició a 1.
+  Revisión por tarea + revisión final de toda la rama.
+  **Limitación / pendiente explícito:** el usuario revisó las pantallas
+  en el navegador con su cuenta de super admin (2026-09-30, servidor
+  local de la rama) y las aprobó para presentarlas; en esa revisión no se
+  registró ningún precio, cargo ni pago, así que el flujo completo de
+  cobro (precio → plan/beca → generar → pago parcial y múltiple → recibo
+  impreso → anular → corte y adeudos) todavía no se ha ejercido desde la
+  interfaz — solo por las trazas SQL. Tampoco hay aún una cuenta con rol
+  `caja` (se invitará después) para confirmar en vivo que Caja opera el
+  módulo y no entra a Asistencia/Calificaciones.
+  **Pendientes menores anotados (no bloqueantes):** el corte muestra un
+  aviso (no totales correctos) si un rango supera 1000 pagos (límite de
+  filas de PostgREST); la API todavía permite a Caja/Dirección insertar
+  un cargo suelto con cualquier monto (mismo poder que la pantalla, con
+  autoría forzada); `registrar_pago` no verifica que el alumno esté
+  activo/inscrito; "por quien registró" en el corte agrupa por nombre;
+  `next.config.ts` no tiene `images.remotePatterns` (romperá el logo en
+  Topbar y recibo cuando `logo_url` apunte a Supabase Storage).
+  **Fuera de alcance (anotado):** envío del recibo por correo al tutor
+  (espera SMTP), recargos automáticos y pronto pago, saldo a favor, CFDI,
+  y arrastre de adeudos entre ciclos (parte de "Gestión de ciclos
+  escolares").
+  **Decisión confirmada por el usuario (2026-09-30):** anular un pago lo
+  saca del corte del día en que se cobró (no aparece como devolución el
+  día de la anulación). Se deja así; el usuario avisará si requiere
+  cambiarlo.
 
 ## Alcance del MVP — 3 módulos
 
@@ -592,9 +678,11 @@ escuela. No los repito aquí para evitar que queden desincronizados.
 
 - Super admin (administra la configuración y usuarios de esta instancia)
 - Administrativo / Dirección
-- Caja / Finanzas
-- Docente (login propio, ver arriba — por ahora solo puede entrar; sin
-  pantallas propias todavía, esas llegan con Materias/Calificaciones)
+- Caja / Finanzas (control total de Pagos / colegiaturas; sin acceso a
+  Asistencia ni Calificaciones)
+- Docente (login propio; ya tiene sus pantallas de Calificaciones y
+  Asistencia, y lee solo los alumnos de sus grupos asignados; sin acceso
+  a Pagos)
 
 ## Enfoque de trabajo
 
@@ -682,6 +770,11 @@ diseñada ni con spec todavía):**
      Listas/Asistencia (ver "Estado actual" arriba) quedan incluidas en
      esta misma verificación pendiente — no es un pendiente nuevo
      separado.
+     Ahora también cubre a **Caja en Pagos**: falta confirmar en vivo,
+     con una cuenta `caja` real (aún no existe), que opera el módulo de
+     punta a punta y no entra a Asistencia/Calificaciones, y ejercer
+     desde la interfaz el flujo completo de cobro (ver la limitación en
+     "Pagos / Colegiaturas").
 1. ~~Configurar RLS por rol en el resto de las tablas~~ — **resuelto** por
    la pieza "RLS completo + login en Alumnos/Pagos/Asistencia" (ver
    "Estado actual" arriba): las 15 tablas que faltaban ya tienen RLS
@@ -690,11 +783,9 @@ diseñada ni con spec todavía):**
    el punto 0 de arriba.
 2. ~~Extender el patrón de Alumnos/Calificaciones a Listas/asistencia~~ —
    **resuelto** por la pieza "Listas / Asistencia" (ver "Estado actual"
-   arriba). Pagos/colegiaturas sigue sin construirse — es lo único que
-   falta de los 3 módulos originalmente planteados para el MVP. El
-   patrón de Server Actions con el id del padre explícito
-   (`crearAlumno(grupoId, ...)`, etc.) ya está validado con varios
-   módulos — Pagos debería seguirlo igual.
+   arriba). Pagos/colegiaturas ya está construido (ver "Pagos /
+   Colegiaturas" en "Estado actual"): **los 3 módulos del MVP (Alumnos,
+   Pagos, Listas/Asistencia) ya tienen funcionalidad real.**
 
 ## Cómo retomar esta sesión
 
