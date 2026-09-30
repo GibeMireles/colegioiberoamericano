@@ -701,3 +701,29 @@ diseñada ni con spec todavía):**
 Usa el comando `/ibero` en cualquier sesión de Claude Code — lee este
 archivo, los últimos commits, y el estado de specs/planes pendientes
 automáticamente, sin necesidad de pegar enlaces o contexto a mano.
+
+### Estado al 2026-09-30: Pagos terminado en rama, esperando aprobación
+
+**El módulo de Pagos / Colegiaturas ya está implementado, revisado y
+documentado, pero vive en la rama `worktree-pagos-colegiaturas`
+(subida a GitHub), no en `main`.** Su documentación completa (decisiones,
+arquitectura, verificación, hallazgos y pendientes) está en el
+`CONTEXTO_CLAUDE_CODE.md` **de esa rama** — al retomar, leer ese archivo:
+`git show worktree-pagos-colegiaturas:CONTEXTO_CLAUDE_CODE.md`, o
+directamente en el worktree local `.claude/worktrees/pagos-colegiaturas`.
+
+- Spec y plan (ya en `main`):
+  `docs/superpowers/specs/2026-09-29-pagos-colegiaturas-design.md` y
+  `docs/superpowers/plans/2026-09-29-pagos-colegiaturas.md` — el plan
+  **ya está ejecutado completo** en la rama (no volver a ejecutarlo).
+- La base de datos real de Supabase **ya tiene** las 3 migraciones de
+  Pagos aplicadas (sin datos: 0 cargos, 0 pagos, folio en 1). Producción
+  no se ve afectada porque `/pagos` en `main` sigue siendo el placeholder.
+- Siguiente paso: el usuario presenta el módulo al colegio (vista previa
+  de Vercel de la rama o `npm run dev` en el worktree); los cambios que
+  pidan se hacen **sobre la rama**. Falta abrir el Pull Request en
+  `https://github.com/GibeMireles/colegioiberoamericano/pull/new/worktree-pagos-colegiaturas`.
+- Al aprobarse: integrar la rama a `main` y push (despliega a
+  producción); luego invitar una cuenta Caja y probar un cobro de punta a
+  punta desde la interfaz (todavía no se ha ejercido el flujo de cobro
+  desde las pantallas, solo por trazas SQL).
