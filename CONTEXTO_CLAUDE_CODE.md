@@ -792,3 +792,32 @@ diseñada ni con spec todavía):**
 Usa el comando `/ibero` en cualquier sesión de Claude Code — lee este
 archivo, los últimos commits, y el estado de specs/planes pendientes
 automáticamente, sin necesidad de pegar enlaces o contexto a mano.
+
+### Estado al 2026-09-30: Pagos en rama, esperando aprobación
+
+- El módulo de Pagos vive en la rama **`worktree-pagos-colegiaturas`**
+  (ya subida a GitHub), **no en `main`**. Producción
+  (`colegioiberoamericano.vercel.app`) todavía no lo tiene. Worktree
+  local: `.claude/worktrees/pagos-colegiaturas` dentro de la carpeta del
+  proyecto (tiene su propio `.env.local` copiado y `node_modules`).
+- La base de datos real de Supabase **sí** tiene aplicadas las 3
+  migraciones de Pagos (`pagos_colegiaturas_esquema`,
+  `pagos_colegiaturas_funciones`, `pagos_colegiaturas_endurecer_escrituras`),
+  sin datos: 0 cargos, 0 pagos, folio en 1. Como `/pagos` en `main` es
+  todavía el placeholder, producción no se ve afectada.
+- Plan de presentación: el usuario va a presentar el módulo al colegio
+  para su aprobación, desde la vista previa de Vercel de la rama (o desde
+  `npm run dev` en el worktree), y los cambios que pidan se trabajan
+  **sobre esa misma rama**. En la vista previa hay que entrar con correo
+  + contraseña (el enlace mágico redirige a localhost/producción, no a la
+  vista previa); el usuario no recordaba su contraseña de super admin, así
+  que conviene crearla en "Mi cuenta" antes de presentar.
+- Pull Request: la rama está subida; falta abrir el PR en
+  `https://github.com/GibeMireles/colegioiberoamericano/pull/new/worktree-pagos-colegiaturas`
+  (no hay `gh` CLI instalado en esta máquina).
+- Al aprobarse: integrar la rama a `main` (desde el PR o localmente) y
+  hacer push — eso despliega a producción. Luego, invitar una cuenta con
+  rol Caja y hacer la prueba de cobro de punta a punta (punto 0 de
+  "Próximos pasos pendientes").
+- Pendientes menores de la implementación, anotados en la entrada
+  "Pagos / Colegiaturas" de "Estado actual".
