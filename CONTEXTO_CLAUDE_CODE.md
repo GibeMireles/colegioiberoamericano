@@ -810,8 +810,8 @@ automáticamente, sin necesidad de pegar enlaces o contexto a mano.
   `npm run dev` en el worktree), y los cambios que pidan se trabajan
   **sobre esa misma rama**. En la vista previa hay que entrar con correo
   + contraseña (el enlace mágico redirige a localhost/producción, no a la
-  vista previa); el usuario no recordaba su contraseña de super admin, así
-  que conviene crearla en "Mi cuenta" antes de presentar.
+  vista previa); el usuario ya confirmó que entra con su contraseña de
+  super admin.
 - Pull Request: la rama está subida; falta abrir el PR en
   `https://github.com/GibeMireles/colegioiberoamericano/pull/new/worktree-pagos-colegiaturas`
   (no hay `gh` CLI instalado en esta máquina).
